@@ -1,0 +1,175 @@
+import React, { useEffect, useState } from 'react'
+import ReactDOM from 'react-dom/client'
+import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
+import { AlertProps, Button, Select, Modal } from 'antd';
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <LoadApp />
+  </React.StrictMode>
+)
+
+function LoadApp() {
+  const [info, setInfo] = useState('get table name, please waiting ....');
+  const [alertType, setAlertType] = useState<AlertProps['type']>('info');
+  const [attachmentFieldMetaList, setAttachmentMetaList] = useState<IAttachmentFieldMeta[]>([])
+  const [multiSelectFieldMetaList, setMultiSelectMetaList] = useState<IMultiSelectFieldMeta[]>([]);
+  const [singleSelectFieldMetaList, setSingleSelectMetaList] = useState<ISingleSelectFieldMeta[]>([]);
+  const [textFieldMetaList, setTextMetaList] = useState<ITextFieldMeta[]>([]);
+
+  const [selectAttachmentField, setSelectAttachmentField] = useState<string>();
+  const [selectElementField, setSelectElementField] = useState<string>();
+  const [selectStyleField, setSelectStyleField] = useState<string>();
+  const [selectThemeField, setSelectThemeField] = useState<string>();
+  const [selectCopywritingField, setSelectCopywritingField] = useState<string>();
+
+
+  useEffect(() => {
+    const fn = async () => {
+      const table = await bitable.base.getActiveTable();
+      const tableName = await table.getName();
+      setInfo(`The table Name is ${tableName}`);
+      setAlertType('success');
+      const fieldAttachmenetMetaList = await table.getFieldMetaListByType<IAttachmentFieldMeta>(FieldType.Attachment);
+      setAttachmentMetaList(fieldAttachmenetMetaList);
+      const fieldMultiSelectMetaList = await table.getFieldMetaListByType<IMultiSelectFieldMeta>(FieldType.MultiSelect);
+      setMultiSelectMetaList(fieldMultiSelectMetaList);
+      const fieldSingleSelectMetaList = await table.getFieldMetaListByType<ISingleSelectFieldMeta>(FieldType.SingleSelect);
+      setSingleSelectMetaList(fieldSingleSelectMetaList);
+      const fieldTextMetaList = await table.getFieldMetaListByType<ITextFieldMeta>(FieldType.Text);
+      setTextMetaList(fieldTextMetaList);
+    };
+    fn();
+  }, []);
+
+  const formatFieldAttachmentMetaList = (metaList: IAttachmentFieldMeta[]) => {
+    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+  };
+  const formatFieldMultiSelectMetaList = (metaList: IMultiSelectFieldMeta[]) => {
+    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+  };
+  const formatFieldSingleSelectMetaList = (metaList: ISingleSelectFieldMeta[]) => {
+    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+  };
+  const formatFieldTextMetaList = (metaList: ITextFieldMeta[]) => {
+    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+  };
+
+  const submit = async () => {
+    if (!selectAttachmentField) {
+      Modal.warning({ title: '提示', content: '请选择图片字段', });
+      return;
+    }
+    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField) {
+      Modal.warning({ title: '提示', content: '元素、风格、题材、文案至少选择一个', });
+      return;
+    }
+    const table = await bitable.base.getActiveTable();
+    const attachmentField = await table.getField<IAttachmentField>(selectAttachmentField);
+    const elementField = selectElementField ? await table.getField<IMultiSelectField>(selectElementField) : null;
+    const styleField = selectStyleField ? await table.getField<IMultiSelectField>(selectStyleField) : null;
+    const themeField = selectThemeField ? await table.getField<ISingleSelectField>(selectThemeField) : null;
+    const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
+    const recordIdList = await table.getRecordIdList();
+
+    for (const recordId of recordIdList) {
+      console.log(recordId);
+      const val = await attachmentField.getValue(recordId);
+      if (null=== val || val.length === 0 || !val) {
+        continue ;
+      }
+      const urls = await attachmentField.getAttachmentUrls(recordId);
+      if (null === urls || urls.length === 0) {
+        continue;
+      }
+      //调用第三方API
+      // try {
+      //  const result =  await jsonpRequest('http://localhost:8081/img-tag',{
+      //     files: urls,
+      //     recordId: recordId
+      //   });
+      //   console.log(result);
+      //   // 将响应结果写入复选框
+      //   if (elementField) {
+      //     await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
+      //   }
+      //   if (styleField) {
+      //     await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
+      //   }
+      //   if (themeField) {
+      //     await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList[0] : '');
+      //   }
+      //   if (copywritingField) {
+      //     await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
+      //   }
+      //   console.log(555);
+      // } catch (error) {
+      //   console.error('API调用失败:', error);
+      // }
+    }
+  };
+
+  async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
+    return new Promise((resolve, reject) => {
+      // 创建随机函数名
+      if (!(window as any)._random_fun_create_prefix_incr) {
+        (window as any)._random_fun_create_prefix_incr = 0;
+      }
+      (window as any)._random_fun_create_prefix_incr++;
+      const funName = 'ras_79_8fa61fSDa62_' + (window as any)._random_fun_create_prefix_incr;
+      (window as any)[funName] = function (res: any) {
+        resolve(res);
+      };
+
+      // params 必须是 JSON 对象
+      params['fun'] = funName;
+      // params['reqNo'] = urlPayload.reqNo;
+      // params['accessToken'] = urlPayload.accessToken;
+
+      // 由于找不到 Base64 对象，使用浏览器内置的 btoa 方法进行 Base64 编码 
+      const base64Str = btoa(unescape(encodeURIComponent(JSON.stringify(params))));
+      if (reqUrl.indexOf("?") > 1) {
+        reqUrl = reqUrl + "&X-CHOICE-TAG=chen&base64=" + base64Str;
+      } else {
+        reqUrl = reqUrl + "?X-CHOICE-TAG=chen&base64=" + base64Str;
+      }
+
+      // 创建 script 元素以调用 jsonp
+      const scriptEl = document.createElement('script');
+      scriptEl.src = reqUrl;
+      // scriptEl.crossOrigin = "anonymous";
+      scriptEl.defer = true;
+      scriptEl.async = true;
+      scriptEl.onerror = function (err: Event | string) {
+        reject(err);
+      };
+      document.getElementsByTagName('head')[0].appendChild(scriptEl);
+    });
+  }
+
+  return <div>
+    <div style={{ margin: 10 }}>
+      <div>图片字段</div>
+      <Select style={{ width: 120 }} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
+    </div>
+    <div style={{ margin: 10 }}>
+      <div>元素</div>
+      <Select style={{ width: 120 }} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+    </div>
+    <div style={{ margin: 10 }}>
+      <div>风格</div>
+      <Select style={{ width: 120 }} onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+    </div>
+    <div style={{ margin: 10 }}>
+      <div>题材</div>
+      <Select style={{ width: 120 }} onSelect={setSelectThemeField} options={formatFieldSingleSelectMetaList(singleSelectFieldMetaList)} />
+    </div>
+    <div style={{ margin: 10 }}>
+      <div>文案</div>
+      <Select style={{ width: 120 }} onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
+    </div>
+    <div style={{ margin: 10 }}>
+      <Button style={{ marginLeft: 10 }} onClick={submit}>批量提取</Button>
+    </div>
+  </div>
+}
