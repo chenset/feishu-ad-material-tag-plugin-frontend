@@ -12,6 +12,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 function LoadApp() {
   const [info, setInfo] = useState('get table name, please waiting ....');
   const [alertType, setAlertType] = useState<AlertProps['type']>('info');
+  const [loading, setLoading] = useState(false);
+
   const [attachmentFieldMetaList, setAttachmentMetaList] = useState<IAttachmentFieldMeta[]>([])
   const [multiSelectFieldMetaList, setMultiSelectMetaList] = useState<IMultiSelectFieldMeta[]>([]);
   const [singleSelectFieldMetaList, setSingleSelectMetaList] = useState<ISingleSelectFieldMeta[]>([]);
@@ -72,6 +74,8 @@ function LoadApp() {
     const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
     const recordIdList = await table.getRecordIdList();
+    // 开始加载
+    setLoading(true); 
     //遍历每一行
     for (const recordId of recordIdList) {
       //附件字段是否存在
@@ -120,7 +124,7 @@ function LoadApp() {
       }
       //调用第三方API
       try {
-       const result =  await jsonpRequest('http://localhost:8080/img-tag',{
+       const result =  await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag',{
           files: urls,
           recordId: recordId
         });
@@ -141,6 +145,8 @@ function LoadApp() {
         console.error('API调用失败:', error);
       }
     }
+    // 结束加载
+    setLoading(false);
   };
 
   async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
@@ -203,7 +209,7 @@ function LoadApp() {
       <Select style={{ width: 120 }} onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
     </div>
     <div style={{ margin: 10 }}>
-      <Button style={{ marginLeft: 10 }} onClick={submit}>批量提取</Button>
+      <Button style={{ marginLeft: 10 }} onClick={submit} loading={loading}>批量提取</Button>
     </div>
   </div>
 }
