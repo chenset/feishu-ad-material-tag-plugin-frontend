@@ -64,16 +64,17 @@ function LoadApp() {
       Modal.warning({ title: '提示', content: '元素、风格、题材、文案至少选择一个', });
       return;
     }
+    //选择的字段
     const table = await bitable.base.getActiveTable();
     const attachmentField = await table.getField<IAttachmentField>(selectAttachmentField);
     const elementField = selectElementField ? await table.getField<IMultiSelectField>(selectElementField) : null;
     const styleField = selectStyleField ? await table.getField<IMultiSelectField>(selectStyleField) : null;
-    const themeField = selectThemeField ? await table.getField<ISingleSelectField>(selectThemeField) : null;
+    const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
     const recordIdList = await table.getRecordIdList();
-
+    //遍历每一行
     for (const recordId of recordIdList) {
-      console.log(recordId);
+      //附件字段是否存在
       const val = await attachmentField.getValue(recordId);
       if (null=== val || val.length === 0 || !val) {
         continue ;
@@ -82,30 +83,63 @@ function LoadApp() {
       if (null === urls || urls.length === 0) {
         continue;
       }
+      //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
+      let needCallApi = false;
+      //选择字段对应行的值
+      let elementVal = null;
+      if (elementField) {
+        elementVal = await elementField.getValue(recordId);
+        if (elementVal === null) {
+          needCallApi = true;
+        }
+      }
+      let styleVal = null;
+      if (styleField) {
+        styleVal = await styleField.getValue(recordId);
+        if (styleVal === null) {
+          needCallApi = true;
+        }
+      }
+      let themeVal = null;
+      if (themeField) {
+        themeVal = await themeField.getValue(recordId);
+        if (themeVal === null) {
+          needCallApi = true;
+        }
+      }
+      let copywritingVal = null;
+      if (copywritingField) {
+        copywritingVal = await copywritingField.getValue(recordId);
+        if (copywritingVal === null) {
+          needCallApi = true;
+        }
+      }
+      //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
+      if (!needCallApi) {
+        continue;
+      }
       //调用第三方API
-      // try {
-      //  const result =  await jsonpRequest('http://localhost:8081/img-tag',{
-      //     files: urls,
-      //     recordId: recordId
-      //   });
-      //   console.log(result);
-      //   // 将响应结果写入复选框
-      //   if (elementField) {
-      //     await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
-      //   }
-      //   if (styleField) {
-      //     await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
-      //   }
-      //   if (themeField) {
-      //     await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList[0] : '');
-      //   }
-      //   if (copywritingField) {
-      //     await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
-      //   }
-      //   console.log(555);
-      // } catch (error) {
-      //   console.error('API调用失败:', error);
-      // }
+      try {
+       const result =  await jsonpRequest('http://localhost:8080/img-tag',{
+          files: urls,
+          recordId: recordId
+        });
+        // 将响应结果写入复选框
+        if (elementField && elementVal === null) {
+          await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
+        }
+        if (styleField && styleVal === null) {
+          await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
+        }
+        if (themeField && themeVal === null) {
+          await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList : []);
+        }
+        if (copywritingField && copywritingVal === null) {
+          await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
+        }
+      } catch (error) {
+        console.error('API调用失败:', error);
+      }
     }
   };
 
@@ -162,7 +196,7 @@ function LoadApp() {
     </div>
     <div style={{ margin: 10 }}>
       <div>题材</div>
-      <Select style={{ width: 120 }} onSelect={setSelectThemeField} options={formatFieldSingleSelectMetaList(singleSelectFieldMetaList)} />
+      <Select style={{ width: 120 }} onSelect={setSelectThemeField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
     </div>
     <div style={{ margin: 10 }}>
       <div>文案</div>
