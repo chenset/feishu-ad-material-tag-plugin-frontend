@@ -330,7 +330,7 @@ function LoadApp() {
   </div>
 }
 
-async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 1000): Promise<any> {
+async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 35000): Promise<any> {
   return new Promise((resolve, reject) => {
     // 创建随机函数名
     if (!(window as any)._random_fun_create_prefix_incr) {
