@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import './css/index.css'
 import ReactDOM from 'react-dom/client'
 import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
 import { AlertProps, Button, Select, Modal } from 'antd';
@@ -89,8 +90,8 @@ function LoadApp() {
 
     // 开始加载
     setLoading(true);
+    let skipItems = 0;
     try {
-
       //遍历每一行
       for (const recordId of recordIdList) {
         //附件字段是否存在
@@ -135,13 +136,15 @@ function LoadApp() {
         }
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         if (!needCallApi) {
+          skipItems++;
           continue;
         }
         //调用第三方API
         try {
           const result = await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag', {
             files: urls,
-            recordId: recordId
+            recordId: recordId,
+            tableId: table.id
           });
           // 将响应结果写入复选框
           if (elementField && elementVal === null) {
@@ -161,60 +164,28 @@ function LoadApp() {
         }
       }
     } finally {
+      if (skipItems === recordIdList.length) {
+        Modal.warning({ title: '提示', content: '没有需要处理的行', });
+      }
       // 结束加载
       setLoading(false);
     }
   };
 
-  async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
-    return new Promise((resolve, reject) => {
-      // 创建随机函数名
-      if (!(window as any)._random_fun_create_prefix_incr) {
-        (window as any)._random_fun_create_prefix_incr = 0;
-      }
-      (window as any)._random_fun_create_prefix_incr++;
-      const funName = 'ras_79_8fa61fSDa62_' + (window as any)._random_fun_create_prefix_incr;
-      (window as any)[funName] = function (res: any) {
-        resolve(res);
-      };
+  return <div style={{}}>
 
-      // params 必须是 JSON 对象
-      params['fun'] = funName;
-      // params['reqNo'] = urlPayload.reqNo;
-      // params['accessToken'] = urlPayload.accessToken;
+    <div style={{ width: 200, margin: '0 auto', textAlign: 'left' }}>
 
-      // 由于找不到 Base64 对象，使用浏览器内置的 btoa 方法进行 Base64 编码 
-      const base64Str = btoa(unescape(encodeURIComponent(JSON.stringify(params))));
-      if (reqUrl.indexOf("?") > 1) {
-        reqUrl = reqUrl + "&X-CHOICE-TAG=chen&base64=" + base64Str;
-      } else {
-        reqUrl = reqUrl + "?X-CHOICE-TAG=chen&base64=" + base64Str;
-      }
+      <div style={{ marginTop: 10 }}>
+        <div>图片字段</div>
+        <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <div>元素</div>
+        <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      </div>
 
-      // 创建 script 元素以调用 jsonp
-      const scriptEl = document.createElement('script');
-      scriptEl.src = reqUrl;
-      // scriptEl.crossOrigin = "anonymous";
-      scriptEl.defer = true;
-      scriptEl.async = true;
-      scriptEl.onerror = function (err: Event | string) {
-        reject(err);
-      };
-      document.getElementsByTagName('head')[0].appendChild(scriptEl);
-    });
-  }
-
-  return <div>
-    <div style={{ margin: 10 }}>
-      <div>图片字段</div>
-      <Select style={{ width: 200 }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
-    </div>
-    <div style={{ margin: 10 }}>
-      <div>元素</div>
-      <Select style={{ width: 200 }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
-    </div>
-
-    {/* <div style={{ margin: 10 }}>
+      {/* <div style={{ margin: 10 }}>
       <div>风格</div>
       <Select style={{ width: 120 }} allowClear onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
     </div>
@@ -226,8 +197,47 @@ function LoadApp() {
       <div>文案</div>
       <Select style={{ width: 120 }} allowClear onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
     </div> */}
-    <div style={{ margin: 10, marginTop: 20 }}>
-      <Button style={{ width: 200 }} type="primary" onClick={submit} loading={loading}>批量提取</Button>
+      <div style={{ marginTop: 20 }}>
+        <Button style={{ width: 200 }} type="primary" onClick={submit} loading={loading}>执行处理</Button>
+      </div>
     </div>
   </div>
+}
+
+async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
+  return new Promise((resolve, reject) => {
+    // 创建随机函数名
+    if (!(window as any)._random_fun_create_prefix_incr) {
+      (window as any)._random_fun_create_prefix_incr = 0;
+    }
+    (window as any)._random_fun_create_prefix_incr++;
+    const funName = 'ras_79_8fa61fSDa62_' + (window as any)._random_fun_create_prefix_incr;
+    (window as any)[funName] = function (res: any) {
+      resolve(res);
+    };
+
+    // params 必须是 JSON 对象
+    params['fun'] = funName;
+    // params['reqNo'] = urlPayload.reqNo;
+    // params['accessToken'] = urlPayload.accessToken;
+
+    // 由于找不到 Base64 对象，使用浏览器内置的 btoa 方法进行 Base64 编码 
+    const base64Str = btoa(unescape(encodeURIComponent(JSON.stringify(params))));
+    if (reqUrl.indexOf("?") > 1) {
+      reqUrl = reqUrl + "&X-CHOICE-TAG=chen&base64=" + base64Str;
+    } else {
+      reqUrl = reqUrl + "?X-CHOICE-TAG=chen&base64=" + base64Str;
+    }
+
+    // 创建 script 元素以调用 jsonp
+    const scriptEl = document.createElement('script');
+    scriptEl.src = reqUrl;
+    // scriptEl.crossOrigin = "anonymous";
+    scriptEl.defer = true;
+    scriptEl.async = true;
+    scriptEl.onerror = function (err: Event | string) {
+      reject(err);
+    };
+    document.getElementsByTagName('head')[0].appendChild(scriptEl);
+  });
 }
