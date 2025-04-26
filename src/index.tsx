@@ -20,6 +20,9 @@ function LoadApp() {
   const [alertType, setAlertType] = useState<AlertProps['type']>('info');
   const [loading, setLoading] = useState(false);
 
+  // Add a new state for logs
+  const [logs, setLogs] = useState<{ recordId: string, time: string, status: string, message: string }[]>([]);
+
   const [attachmentFieldMetaList, setAttachmentMetaList] = useState<IAttachmentFieldMeta[]>([])
   const [multiSelectFieldMetaList, setMultiSelectMetaList] = useState<IMultiSelectFieldMeta[]>([]);
   const [singleSelectFieldMetaList, setSingleSelectMetaList] = useState<ISingleSelectFieldMeta[]>([]);
@@ -64,6 +67,9 @@ function LoadApp() {
   };
 
   const submit = async () => {
+    // Clear previous logs
+    setLogs([]);
+
     // update selected value cache
     cacheSelectVal['attachment'] = selectAttachmentField
     cacheSelectVal['element'] = selectElementField
@@ -98,10 +104,22 @@ function LoadApp() {
         //附件字段是否存在
         const val = await attachmentField.getValue(recordId);
         if (null === val || val.length === 0 || !val) {
+          setLogs(prev => [...prev, {
+            recordId,
+            time: new Date().toLocaleTimeString(),
+            status: 'skipped',
+            message: '无附件'
+          }]);
           continue;
         }
         const urls = await attachmentField.getAttachmentUrls(recordId);
         if (null === urls || urls.length === 0) {
+          setLogs(prev => [...prev, {
+            recordId,
+            time: new Date().toLocaleTimeString(),
+            status: 'skipped',
+            message: '无附件URL'
+          }]);
           continue;
         }
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
@@ -138,8 +156,23 @@ function LoadApp() {
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         if (!needCallApi) {
           skipItems++;
+          setLogs(prev => [...prev, {
+            recordId,
+            time: new Date().toLocaleTimeString(),
+            status: 'skipped',
+            message: '字段已有值'
+          }]);
           continue;
         }
+
+        // 记录开始处理的日志
+        setLogs(prev => [...prev, {
+          recordId,
+          time: new Date().toLocaleTimeString(),
+          status: 'processing',
+          message: '开始处理'
+        }]);
+
         //调用第三方API
         try {
           const result = await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag', {
@@ -160,8 +193,23 @@ function LoadApp() {
           if (copywritingField && copywritingVal === null) {
             await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
           }
+
+          // 记录处理成功的日志
+          setLogs(prev => [...prev, {
+            recordId,
+            time: new Date().toLocaleTimeString(),
+            status: 'success',
+            message: '处理完成'
+          }]);
         } catch (error) {
           console.error('API调用失败:', error);
+          // 记录处理失败的日志
+          setLogs(prev => [...prev, {
+            recordId,
+            time: new Date().toLocaleTimeString(),
+            status: 'error',
+            message: `处理失败: ${error instanceof Error ? error.message : String(error)}`
+          }]);
         }
       }
     } finally {
@@ -202,6 +250,48 @@ function LoadApp() {
         <Button style={{ width: 200 }} type="primary" onClick={submit} loading={loading}>执行处理</Button>
       </div>
     </div>
+
+    {/* 新增日志区域 */}
+    <div style={{ padding: 10,marginTop: 20, width: '100%' }}>
+      <div style={{ borderBottom: '1px solid #eee', paddingBottom: 5, marginBottom: 10 }}>处理日志</div>
+      <div style={{
+        maxHeight: 200,
+        overflowY: 'auto',
+        border: '1px solid #eee',
+        padding: 10,
+        borderRadius: 4,
+        fontSize: '12px'
+      }}>
+        {logs.length === 0 ?
+          <div style={{ color: '#999', textAlign: 'center' }}>暂无日志</div> :
+          logs.map((log, index) => (
+            <div key={index} style={{
+              marginBottom: 5,
+              padding: 5,
+              backgroundColor: log.status === 'error' ? '#fff2f0' :
+                log.status === 'success' ? '#f6ffed' :
+                  log.status === 'processing' ? '#e6f7ff' : '#f5f5f5',
+              borderRadius: 2
+            }}>
+              <span style={{ color: '#666' }}>{log.time}</span> -
+              <span>记录: {log.recordId}</span> -
+              <span style={{
+                color: log.status === 'error' ? '#f5222d' :
+                  log.status === 'success' ? '#52c41a' :
+                    log.status === 'processing' ? '#1890ff' : '#8c8c8c'
+              }}>
+                {log.status === 'error' ? '错误' :
+                  log.status === 'success' ? '成功' :
+                    log.status === 'processing' ? '处理中' : '跳过'}
+              </span> -
+              <span>{log.message}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+
   </div>
 }
 
