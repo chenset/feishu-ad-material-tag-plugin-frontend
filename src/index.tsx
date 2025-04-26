@@ -102,29 +102,8 @@ function LoadApp() {
       //遍历每一行
       for (let i = 0; i < recordIdList.length; i++) {
         const recordId = recordIdList[i];
-        //附件字段是否存在
-        const val = await attachmentField.getValue(recordId);
-        if (null === val || val.length === 0 || !val) {
-          setLogs(prev => [...prev, {
-            recordId,
-            index: i + 1,
-            time: new Date().toLocaleTimeString(),
-            status: 'skipped',
-            message: '无附件'
-          }]);
-          continue;
-        }
-        const urls = await attachmentField.getAttachmentUrls(recordId);
-        if (null === urls || urls.length === 0) {
-          setLogs(prev => [...prev, {
-            recordId,
-            index: i + 1,
-            time: new Date().toLocaleTimeString(),
-            status: 'skipped',
-            message: '无附件URL'
-          }]);
-          continue;
-        }
+
+                
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
         //选择字段对应行的值
@@ -164,7 +143,32 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '字段已有值'
+            message: '字段已有值, 跳过'
+          }]);
+          continue;
+        }
+
+
+        //附件字段是否存在
+        const val = await attachmentField.getValue(recordId);
+        if (null === val || val.length === 0 || !val) {
+          setLogs(prev => [...prev, {
+            recordId,
+            index: i + 1,
+            time: new Date().toLocaleTimeString(),
+            status: 'skipped',
+            message: '无附件'
+          }]);
+          continue;
+        }
+        const urls = await attachmentField.getAttachmentUrls(recordId);
+        if (null === urls || urls.length === 0) {
+          setLogs(prev => [...prev, {
+            recordId,
+            index: i + 1,
+            time: new Date().toLocaleTimeString(),
+            status: 'skipped',
+            message: '无附件URL'
           }]);
           continue;
         }
