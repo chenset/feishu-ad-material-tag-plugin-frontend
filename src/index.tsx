@@ -153,6 +153,7 @@ function LoadApp() {
         //附件字段是否存在
         const val = await attachmentField.getValue(recordId);
         if (null === val || val.length === 0 || !val) {
+          failedItems++;
           setLogs(prev => [...prev, {
             recordId,
             index: i + 1,
@@ -165,6 +166,7 @@ function LoadApp() {
         }
         const urls = await attachmentField.getAttachmentUrls(recordId);
         if (null === urls || urls.length === 0) {
+          failedItems++;
           setLogs(prev => [...prev, {
             recordId,
             index: i + 1,
@@ -287,7 +289,7 @@ function LoadApp() {
       <div
         ref={logContainerRef}
         style={{
-          maxHeight: 200,
+          maxHeight: 205,
           overflowY: 'auto',
           border: '1px solid #eee',
           padding: 10,
