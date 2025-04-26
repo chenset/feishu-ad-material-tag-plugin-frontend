@@ -69,7 +69,7 @@ function LoadApp() {
   const submit = async () => {
     // Clear previous logs
     setLogs([]);
-    
+
     // update selected value cache
     cacheSelectVal['attachment'] = selectAttachmentField
     cacheSelectVal['element'] = selectElementField
@@ -99,11 +99,12 @@ function LoadApp() {
     // 开始加载
     setLoading(true);
     let skipItems = 0;
+    let failedItems = 0;
     try {
       //遍历每一行
       for (let i = 0; i < recordIdList.length; i++) {
         const recordId = recordIdList[i];
-        
+
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
         //选择字段对应行的值
@@ -216,6 +217,7 @@ function LoadApp() {
             total: totalRecords
           }]);
         } catch (error) {
+          failedItems++;
           console.error('API调用失败:', error);
           // 记录处理失败的日志
           setLogs(prev => [...prev, {
@@ -231,6 +233,8 @@ function LoadApp() {
     } finally {
       if (skipItems === recordIdList.length) {
         Modal.warning({ title: '提示', content: '没有需要处理的行', });
+      } else {
+        Modal.info({ title: '提示', content: `${totalRecords} 行处理完成, ${skipItems} 行跳过, ${failedItems} 行失败, ${totalRecords-skipItems-failedItems}行成功`, });
       }
       // 结束加载
       setLoading(false);
@@ -239,7 +243,7 @@ function LoadApp() {
 
   // Add a ref for the log container
   const logContainerRef = React.useRef<HTMLDivElement>(null);
-  
+
   // Add effect to scroll to bottom when logs change
   useEffect(() => {
     if (logContainerRef.current) {
@@ -278,9 +282,9 @@ function LoadApp() {
     </div>
 
     {/* 新增日志区域 */}
-    <div style={{ padding: 10,marginTop: 20, width: '100%' }}>
+    <div style={{ padding: 10, marginTop: 20, width: '100%' }}>
       <div style={{ borderBottom: '1px solid #eee', paddingBottom: 5, marginBottom: 10 }}>处理日志</div>
-      <div 
+      <div
         ref={logContainerRef}
         style={{
           maxHeight: 200,
@@ -324,7 +328,7 @@ function LoadApp() {
   </div>
 }
 
-async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 35000): Promise<any> {
+async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 1000): Promise<any> {
   return new Promise((resolve, reject) => {
     // 创建随机函数名
     if (!(window as any)._random_fun_create_prefix_incr) {
