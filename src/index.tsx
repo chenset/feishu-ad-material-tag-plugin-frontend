@@ -10,6 +10,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 )
 
 function LoadApp() {
+  //cache the selected value
+  const selectDefaultValueKey = 'selectField_v1'
+  var cacheSelectVal = JSON.parse(localStorage.getItem(selectDefaultValueKey) || "{}") || {}
+
   const [info, setInfo] = useState('get table name, please waiting ....');
   const [alertType, setAlertType] = useState<AlertProps['type']>('info');
   const [loading, setLoading] = useState(false);
@@ -19,11 +23,11 @@ function LoadApp() {
   const [singleSelectFieldMetaList, setSingleSelectMetaList] = useState<ISingleSelectFieldMeta[]>([]);
   const [textFieldMetaList, setTextMetaList] = useState<ITextFieldMeta[]>([]);
 
-  const [selectAttachmentField, setSelectAttachmentField] = useState<string>();
-  const [selectElementField, setSelectElementField] = useState<string>();
-  const [selectStyleField, setSelectStyleField] = useState<string>();
-  const [selectThemeField, setSelectThemeField] = useState<string>();
-  const [selectCopywritingField, setSelectCopywritingField] = useState<string>();
+  const [selectAttachmentField, setSelectAttachmentField] = useState<string>(cacheSelectVal['attachment'] || '');
+  const [selectElementField, setSelectElementField] = useState<string>(cacheSelectVal['element'] || '');
+  const [selectStyleField, setSelectStyleField] = useState<string>(cacheSelectVal['style'] || '');
+  const [selectThemeField, setSelectThemeField] = useState<string>(cacheSelectVal['theme'] || '');
+  const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
 
 
   useEffect(() => {
@@ -58,6 +62,14 @@ function LoadApp() {
   };
 
   const submit = async () => {
+    // update selected value cache
+    cacheSelectVal['attachment'] = selectAttachmentField
+    cacheSelectVal['element'] = selectElementField
+    cacheSelectVal['style'] = selectStyleField
+    cacheSelectVal['theme'] = selectThemeField
+    cacheSelectVal['copywriting'] = selectCopywritingField
+    localStorage.setItem(selectDefaultValueKey, JSON.stringify(cacheSelectVal))
+
     if (!selectAttachmentField) {
       Modal.warning({ title: '提示', content: '请选择图片字段', });
       return;
@@ -74,79 +86,84 @@ function LoadApp() {
     const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
     const recordIdList = await table.getRecordIdList();
+
     // 开始加载
-    setLoading(true); 
-    //遍历每一行
-    for (const recordId of recordIdList) {
-      //附件字段是否存在
-      const val = await attachmentField.getValue(recordId);
-      if (null=== val || val.length === 0 || !val) {
-        continue ;
-      }
-      const urls = await attachmentField.getAttachmentUrls(recordId);
-      if (null === urls || urls.length === 0) {
-        continue;
-      }
-      //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
-      let needCallApi = false;
-      //选择字段对应行的值
-      let elementVal = null;
-      if (elementField) {
-        elementVal = await elementField.getValue(recordId);
-        if (elementVal === null) {
-          needCallApi = true;
+    setLoading(true);
+    try {
+
+      //遍历每一行
+      for (const recordId of recordIdList) {
+        //附件字段是否存在
+        const val = await attachmentField.getValue(recordId);
+        if (null === val || val.length === 0 || !val) {
+          continue;
+        }
+        const urls = await attachmentField.getAttachmentUrls(recordId);
+        if (null === urls || urls.length === 0) {
+          continue;
+        }
+        //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
+        let needCallApi = false;
+        //选择字段对应行的值
+        let elementVal = null;
+        if (elementField) {
+          elementVal = await elementField.getValue(recordId);
+          if (elementVal === null) {
+            needCallApi = true;
+          }
+        }
+        let styleVal = null;
+        if (styleField) {
+          styleVal = await styleField.getValue(recordId);
+          if (styleVal === null) {
+            needCallApi = true;
+          }
+        }
+        let themeVal = null;
+        if (themeField) {
+          themeVal = await themeField.getValue(recordId);
+          if (themeVal === null) {
+            needCallApi = true;
+          }
+        }
+        let copywritingVal = null;
+        if (copywritingField) {
+          copywritingVal = await copywritingField.getValue(recordId);
+          if (copywritingVal === null) {
+            needCallApi = true;
+          }
+        }
+        //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
+        if (!needCallApi) {
+          continue;
+        }
+        //调用第三方API
+        try {
+          const result = await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag', {
+            files: urls,
+            recordId: recordId
+          });
+          // 将响应结果写入复选框
+          if (elementField && elementVal === null) {
+            await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
+          }
+          if (styleField && styleVal === null) {
+            await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
+          }
+          if (themeField && themeVal === null) {
+            await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList : []);
+          }
+          if (copywritingField && copywritingVal === null) {
+            await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
+          }
+        } catch (error) {
+          console.error('API调用失败:', error);
         }
       }
-      let styleVal = null;
-      if (styleField) {
-        styleVal = await styleField.getValue(recordId);
-        if (styleVal === null) {
-          needCallApi = true;
-        }
-      }
-      let themeVal = null;
-      if (themeField) {
-        themeVal = await themeField.getValue(recordId);
-        if (themeVal === null) {
-          needCallApi = true;
-        }
-      }
-      let copywritingVal = null;
-      if (copywritingField) {
-        copywritingVal = await copywritingField.getValue(recordId);
-        if (copywritingVal === null) {
-          needCallApi = true;
-        }
-      }
-      //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
-      if (!needCallApi) {
-        continue;
-      }
-      //调用第三方API
-      try {
-       const result =  await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag',{
-          files: urls,
-          recordId: recordId
-        });
-        // 将响应结果写入复选框
-        if (elementField && elementVal === null) {
-          await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
-        }
-        if (styleField && styleVal === null) {
-          await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
-        }
-        if (themeField && themeVal === null) {
-          await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList : []);
-        }
-        if (copywritingField && copywritingVal === null) {
-          await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
-        }
-      } catch (error) {
-        console.error('API调用失败:', error);
-      }
+    } finally {
+      // 结束加载
+      setLoading(false);
     }
-    // 结束加载
-    setLoading(false);
   };
 
   async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
@@ -190,26 +207,27 @@ function LoadApp() {
   return <div>
     <div style={{ margin: 10 }}>
       <div>图片字段</div>
-      <Select style={{ width: 120 }} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
+      <Select style={{ width: 200 }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
     </div>
     <div style={{ margin: 10 }}>
       <div>元素</div>
-      <Select style={{ width: 120 }} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <Select style={{ width: 200 }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
     </div>
-    <div style={{ margin: 10 }}>
+
+    {/* <div style={{ margin: 10 }}>
       <div>风格</div>
-      <Select style={{ width: 120 }} onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <Select style={{ width: 120 }} allowClear onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
     </div>
     <div style={{ margin: 10 }}>
       <div>题材</div>
-      <Select style={{ width: 120 }} onSelect={setSelectThemeField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <Select style={{ width: 120 }} allowClear onSelect={setSelectThemeField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
     </div>
     <div style={{ margin: 10 }}>
       <div>文案</div>
-      <Select style={{ width: 120 }} onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
-    </div>
-    <div style={{ margin: 10 }}>
-      <Button style={{ marginLeft: 10 }} onClick={submit} loading={loading}>批量提取</Button>
+      <Select style={{ width: 120 }} allowClear onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
+    </div> */}
+    <div style={{ margin: 10, marginTop: 20 }}>
+      <Button style={{ width: 200 }} type="primary" onClick={submit} loading={loading}>批量提取</Button>
     </div>
   </div>
 }
