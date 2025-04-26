@@ -21,7 +21,7 @@ function LoadApp() {
   const [loading, setLoading] = useState(false);
 
   // Add a new state for logs
-  const [logs, setLogs] = useState<{ recordId: string, index: number, time: string, status: string, message: string }[]>([]);
+  const [logs, setLogs] = useState<{ recordId: string, index: number, time: string, status: string, message: string, total?: number }[]>([]);
 
   const [attachmentFieldMetaList, setAttachmentMetaList] = useState<IAttachmentFieldMeta[]>([])
   const [multiSelectFieldMetaList, setMultiSelectMetaList] = useState<IMultiSelectFieldMeta[]>([]);
@@ -94,6 +94,7 @@ function LoadApp() {
     const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
     const recordIdList = await table.getRecordIdList();
+    const totalRecords = recordIdList.length;
 
     // 开始加载
     setLoading(true);
@@ -102,8 +103,7 @@ function LoadApp() {
       //遍历每一行
       for (let i = 0; i < recordIdList.length; i++) {
         const recordId = recordIdList[i];
-
-                
+        
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
         //选择字段对应行的值
@@ -143,11 +143,11 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '字段已有值, 跳过'
+            message: '字段已有值, 跳过',
+            total: totalRecords
           }]);
           continue;
         }
-
 
         //附件字段是否存在
         const val = await attachmentField.getValue(recordId);
@@ -157,7 +157,8 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '无附件'
+            message: '无附件',
+            total: totalRecords
           }]);
           continue;
         }
@@ -168,7 +169,8 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '无附件URL'
+            message: '无附件URL',
+            total: totalRecords
           }]);
           continue;
         }
@@ -179,7 +181,8 @@ function LoadApp() {
           index: i + 1,
           time: new Date().toLocaleTimeString(),
           status: 'processing',
-          message: '开始处理'
+          message: '开始处理',
+          total: totalRecords
         }]);
 
         //调用第三方API
@@ -209,7 +212,8 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'success',
-            message: '处理完成'
+            message: '处理完成',
+            total: totalRecords
           }]);
         } catch (error) {
           console.error('API调用失败:', error);
@@ -219,7 +223,8 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'error',
-            message: `处理失败: ${error instanceof Error ? error.message : String(error)}`
+            message: `处理失败: ${error instanceof Error ? error.message : String(error)}`,
+            total: totalRecords
           }]);
         }
       }
@@ -298,8 +303,7 @@ function LoadApp() {
               borderRadius: 2
             }}>
               <span style={{ color: '#666' }}>{log.time}</span> -
-              <span>第 {log.index} 行</span> -
-              {/* <span>记录ID: {log.recordId.substring(0, 6)}...</span> - */}
+              <span>{log.total}/{log.index}</span> -
               <span style={{
                 color: log.status === 'error' ? '#f5222d' :
                   log.status === 'success' ? '#52c41a' :
