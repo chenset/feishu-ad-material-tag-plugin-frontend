@@ -21,7 +21,7 @@ function LoadApp() {
   const [loading, setLoading] = useState(false);
 
   // Add a new state for logs
-  const [logs, setLogs] = useState<{ recordId: string, time: string, status: string, message: string }[]>([]);
+  const [logs, setLogs] = useState<{ recordId: string, index: number, time: string, status: string, message: string }[]>([]);
 
   const [attachmentFieldMetaList, setAttachmentMetaList] = useState<IAttachmentFieldMeta[]>([])
   const [multiSelectFieldMetaList, setMultiSelectMetaList] = useState<IMultiSelectFieldMeta[]>([]);
@@ -69,7 +69,7 @@ function LoadApp() {
   const submit = async () => {
     // Clear previous logs
     setLogs([]);
-
+    
     // update selected value cache
     cacheSelectVal['attachment'] = selectAttachmentField
     cacheSelectVal['element'] = selectElementField
@@ -100,12 +100,14 @@ function LoadApp() {
     let skipItems = 0;
     try {
       //遍历每一行
-      for (const recordId of recordIdList) {
+      for (let i = 0; i < recordIdList.length; i++) {
+        const recordId = recordIdList[i];
         //附件字段是否存在
         const val = await attachmentField.getValue(recordId);
         if (null === val || val.length === 0 || !val) {
           setLogs(prev => [...prev, {
             recordId,
+            index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
             message: '无附件'
@@ -116,6 +118,7 @@ function LoadApp() {
         if (null === urls || urls.length === 0) {
           setLogs(prev => [...prev, {
             recordId,
+            index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
             message: '无附件URL'
@@ -158,6 +161,7 @@ function LoadApp() {
           skipItems++;
           setLogs(prev => [...prev, {
             recordId,
+            index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
             message: '字段已有值'
@@ -168,6 +172,7 @@ function LoadApp() {
         // 记录开始处理的日志
         setLogs(prev => [...prev, {
           recordId,
+          index: i + 1,
           time: new Date().toLocaleTimeString(),
           status: 'processing',
           message: '开始处理'
@@ -197,6 +202,7 @@ function LoadApp() {
           // 记录处理成功的日志
           setLogs(prev => [...prev, {
             recordId,
+            index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'success',
             message: '处理完成'
@@ -206,6 +212,7 @@ function LoadApp() {
           // 记录处理失败的日志
           setLogs(prev => [...prev, {
             recordId,
+            index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'error',
             message: `处理失败: ${error instanceof Error ? error.message : String(error)}`
@@ -220,6 +227,16 @@ function LoadApp() {
       setLoading(false);
     }
   };
+
+  // Add a ref for the log container
+  const logContainerRef = React.useRef<HTMLDivElement>(null);
+  
+  // Add effect to scroll to bottom when logs change
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   return <div style={{}}>
 
@@ -254,14 +271,17 @@ function LoadApp() {
     {/* 新增日志区域 */}
     <div style={{ padding: 10,marginTop: 20, width: '100%' }}>
       <div style={{ borderBottom: '1px solid #eee', paddingBottom: 5, marginBottom: 10 }}>处理日志</div>
-      <div style={{
-        maxHeight: 200,
-        overflowY: 'auto',
-        border: '1px solid #eee',
-        padding: 10,
-        borderRadius: 4,
-        fontSize: '12px'
-      }}>
+      <div 
+        ref={logContainerRef}
+        style={{
+          maxHeight: 200,
+          overflowY: 'auto',
+          border: '1px solid #eee',
+          padding: 10,
+          borderRadius: 4,
+          fontSize: '12px'
+        }}
+      >
         {logs.length === 0 ?
           <div style={{ color: '#999', textAlign: 'center' }}>暂无日志</div> :
           logs.map((log, index) => (
@@ -274,7 +294,8 @@ function LoadApp() {
               borderRadius: 2
             }}>
               <span style={{ color: '#666' }}>{log.time}</span> -
-              <span>记录: {log.recordId}</span> -
+              <span>第 {log.index} 行</span> -
+              {/* <span>记录ID: {log.recordId.substring(0, 6)}...</span> - */}
               <span style={{
                 color: log.status === 'error' ? '#f5222d' :
                   log.status === 'success' ? '#52c41a' :
@@ -295,7 +316,7 @@ function LoadApp() {
   </div>
 }
 
-async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 30000): Promise<any> {
+async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 35000): Promise<any> {
   return new Promise((resolve, reject) => {
     // 创建随机函数名
     if (!(window as any)._random_fun_create_prefix_incr) {
