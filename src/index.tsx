@@ -3,6 +3,7 @@ import './css/index.css'
 import ReactDOM from 'react-dom/client'
 import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
 import { AlertProps, Button, Select, Modal } from 'antd';
+import { toByteArray, fromByteArray } from 'base64-js';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -204,40 +205,59 @@ function LoadApp() {
   </div>
 }
 
-async function jsonpRequest(reqUrl: string, params: Record<string, any>): Promise<any> {
+async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout: number = 30000): Promise<any> {
   return new Promise((resolve, reject) => {
     // 创建随机函数名
     if (!(window as any)._random_fun_create_prefix_incr) {
       (window as any)._random_fun_create_prefix_incr = 0;
     }
     (window as any)._random_fun_create_prefix_incr++;
-    const funName = 'ras_79_8fa61fSDa62_' + (window as any)._random_fun_create_prefix_incr;
-    (window as any)[funName] = function (res: any) {
+    const funName: string = 'ras_79_8fa61fSDa62_' + (window as any)._random_fun_create_prefix_incr;
+
+    // 设置全局回调函数
+    (window as any)[funName] = (res: any): void => {
       resolve(res);
+      cleanup();
     };
 
     // params 必须是 JSON 对象
     params['fun'] = funName;
-    // params['reqNo'] = urlPayload.reqNo;
-    // params['accessToken'] = urlPayload.accessToken;
+    // const base64Str: string = btoa(unescape(encodeURIComponent(JSON.stringify(params))));
+    // 将 params 转换为 UTF-8 编码的字节数组
+    const textEncoder: TextEncoder = new TextEncoder();
+    const paramsBytes: Uint8Array = textEncoder.encode(JSON.stringify(params));
+    // 使用 base64-js 进行 Base64 编码
+    const base64Str: string = fromByteArray(paramsBytes);
+    reqUrl = reqUrl.includes("?")
+      ? `${reqUrl}&X-CHOICE-TAG=chen&base64=${base64Str}`
+      : `${reqUrl}?X-CHOICE-TAG=chen&base64=${base64Str}`;
 
-    // 由于找不到 Base64 对象，使用浏览器内置的 btoa 方法进行 Base64 编码 
-    const base64Str = btoa(unescape(encodeURIComponent(JSON.stringify(params))));
-    if (reqUrl.indexOf("?") > 1) {
-      reqUrl = reqUrl + "&X-CHOICE-TAG=chen&base64=" + base64Str;
-    } else {
-      reqUrl = reqUrl + "?X-CHOICE-TAG=chen&base64=" + base64Str;
-    }
-
-    // 创建 script 元素以调用 jsonp
-    const scriptEl = document.createElement('script');
+    // 创建 script 元素
+    const scriptEl: HTMLScriptElement = document.createElement('script');
     scriptEl.src = reqUrl;
-    // scriptEl.crossOrigin = "anonymous";
     scriptEl.defer = true;
     scriptEl.async = true;
-    scriptEl.onerror = function (err: Event | string) {
-      reject(err);
+
+    // 错误处理
+    scriptEl.onerror = (err: Event | string): void => {
+      reject(new Error(`Script load error: ${err}`));
+      cleanup();
     };
+
+    // 添加到文档
     document.getElementsByTagName('head')[0].appendChild(scriptEl);
+
+    // 设置超时
+    const timeoutId = setTimeout(() => {
+      reject(new Error('JSONP request timeout'));
+      cleanup();
+    }, timeout);
+
+    // 清理函数：移除 script 元素、回调函数和清除超时
+    function cleanup(): void {
+      clearTimeout(timeoutId);
+      scriptEl.remove();
+      delete (window as any)[funName];
+    }
   });
 }
