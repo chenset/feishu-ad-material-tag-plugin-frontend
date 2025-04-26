@@ -229,8 +229,8 @@ async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout
     // 使用 base64-js 进行 Base64 编码
     const base64Str: string = fromByteArray(paramsBytes);
     reqUrl = reqUrl.includes("?")
-      ? `${reqUrl}&X-CHOICE-TAG=chen&base64=${base64Str}`
-      : `${reqUrl}?X-CHOICE-TAG=chen&base64=${base64Str}`;
+      ? `${reqUrl}&base64=${base64Str}`
+      : `${reqUrl}?base64=${base64Str}`;
 
     // 创建 script 元素
     const scriptEl: HTMLScriptElement = document.createElement('script');
@@ -249,7 +249,7 @@ async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout
 
     // 设置超时
     const timeoutId = setTimeout(() => {
-      reject(new Error('JSONP request timeout'));
+      reject(new Error('HTTP request timeout'));
       cleanup();
     }, timeout);
 
