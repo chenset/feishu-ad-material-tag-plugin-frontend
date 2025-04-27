@@ -35,7 +35,7 @@ function LoadApp() {
   const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
   
   // Add state for custom API URL
-  const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'http://localhost:8080/feishu-ad-material-tag-plugin/image-tag');
+  const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'https://feishu-g-plugin-zacgffzypr.cn-shenzhen.fcapp.run/feishu-ad-material-tag-plugin/image-tag');
 
   // Function to handle custom API URL changes
   const handleCustomApiUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,6 +173,21 @@ function LoadApp() {
           }]);
           continue;
         }
+        //附件字段是否包含非图片附件
+        const containNonImage = val.some((attachment: any) => attachment.type !== 'image');
+        if (containNonImage) {
+          skipItems++;
+          setLogs(prev => [...prev, {
+            recordId,
+            index: i + 1,
+            time: new Date().toLocaleTimeString(),
+            status:'skipped',
+            message: '此功能目前仅支持提取图片类型的附件',
+            total: totalRecords
+          }]);
+          continue;
+        }
+        //获取附件的url
         const urls = await attachmentField.getAttachmentUrls(recordId);
         if (null === urls || urls.length === 0) {
           skipItems++;
@@ -196,6 +211,7 @@ function LoadApp() {
           message: '开始处理',
           total: totalRecords
         }]);
+        const startTime = new Date();
 
         //调用第三方API
         try {
@@ -217,6 +233,8 @@ function LoadApp() {
           if (copywritingField && copywritingVal === null) {
             await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
           }
+          // 计算耗时
+          const duration = (new Date().getTime() - startTime.getTime()) / 1000;
 
           // 记录处理成功的日志
           setLogs(prev => [...prev, {
@@ -224,19 +242,21 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'success',
-            message: '处理完成' + (result.msg ? `: ${result.msg}` : ''),
+            message: `处理完成 (耗时: ${duration.toFixed(2)}秒)` + (result.msg ? `: ${result.msg}` : ''),
             total: totalRecords
           }]);
         } catch (error) {
           failedItems++;
           console.error('API调用失败:', error);
+          //耗时
+          const duration = (new Date().getTime() - startTime.getTime()) / 1000;
           // 记录处理失败的日志
           setLogs(prev => [...prev, {
             recordId,
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'error',
-            message: `处理失败: ${error instanceof Error ? error.message : String(error)}`,
+            message: `处理失败 (耗时: ${duration.toFixed(2)}秒): ${error instanceof Error ? error.message : String(error)}`,
             total: totalRecords
           }]);
         }
