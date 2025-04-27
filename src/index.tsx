@@ -153,7 +153,7 @@ function LoadApp() {
         //附件字段是否存在
         const val = await attachmentField.getValue(recordId);
         if (null === val || val.length === 0 || !val) {
-          failedItems++;
+          skipItems++;
           setLogs(prev => [...prev, {
             recordId,
             index: i + 1,
@@ -166,7 +166,7 @@ function LoadApp() {
         }
         const urls = await attachmentField.getAttachmentUrls(recordId);
         if (null === urls || urls.length === 0) {
-          failedItems++;
+          skipItems++;
           setLogs(prev => [...prev, {
             recordId,
             index: i + 1,
