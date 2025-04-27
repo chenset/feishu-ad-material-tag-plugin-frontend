@@ -174,9 +174,6 @@ function LoadApp() {
           continue;
         }
         //附件字段是否包含非图片附件
-        val.some(file => {
-          console.log(i+1 + ':' + file.type)
-        });
         const containNonImage = val.some(file => !file.type.startsWith('image/'));
         if (containNonImage) {
           skipItems++;
