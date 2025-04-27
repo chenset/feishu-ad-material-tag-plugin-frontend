@@ -224,7 +224,7 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'success',
-            message: `处理完成。${result.msg}`,
+            message: '处理完成' + (result.msg ? `: ${result.msg}` : ''),
             total: totalRecords
           }]);
         } catch (error) {
