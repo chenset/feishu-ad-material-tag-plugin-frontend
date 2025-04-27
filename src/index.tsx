@@ -33,7 +33,16 @@ function LoadApp() {
   const [selectStyleField, setSelectStyleField] = useState<string>(cacheSelectVal['style'] || '');
   const [selectThemeField, setSelectThemeField] = useState<string>(cacheSelectVal['theme'] || '');
   const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
+  
+  // Add state for custom API URL
+  const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'http://localhost:8080/feishu-ad-material-tag-plugin/image-tag');
 
+  // Function to handle custom API URL changes
+  const handleCustomApiUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    setCustomApiUrl(newUrl);
+    localStorage.setItem('customApiUrl', newUrl);
+  };
 
   useEffect(() => {
     const fn = async () => {
@@ -190,7 +199,7 @@ function LoadApp() {
 
         //调用第三方API
         try {
-          const result = await jsonpRequest('http://localhost:8080/feishu-ad-material-tag-plugin/image-tag', {
+          const result = await jsonpRequest(customApiUrl, {
             files: urls,
             recordId: recordId,
             tableId: table.id
@@ -258,11 +267,11 @@ function LoadApp() {
     <div style={{ width: 200, margin: '0 auto', textAlign: 'left' }}>
 
       <div style={{ marginTop: 10 }}>
-        <div>图片字段</div>
+        <div>请选择图片所在字段</div>
         <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
       </div>
       <div style={{ marginTop: 10 }}>
-        <div>元素</div>
+        <div>请选择标签回写字段</div>
         <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
 
@@ -326,6 +335,34 @@ function LoadApp() {
       </div>
     </div>
 
+    {/* Custom API URL input field fixed at the bottom */}
+    <div style={{ 
+      position: 'fixed', 
+      bottom: '10px', 
+      left: '0',
+      width: '100%',
+      padding: '0 10px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      borderTop: '1px solid #eee',
+      zIndex: 100
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '5px 0' }}>
+        <label style={{ fontSize: '12px', marginRight: '5px', whiteSpace: 'nowrap' }}>自定义服务器API地址:</label>
+        <input 
+          type="text" 
+          value={customApiUrl} 
+          onChange={handleCustomApiUrlChange}
+          style={{ 
+            flex: 1,
+            padding: '4px 8px',
+            fontSize: '12px',
+            border: '1px solid #d9d9d9',
+            borderRadius: '4px'
+          }}
+          placeholder="请输入自定义API地址"
+        />
+      </div>
+    </div>
 
   </div>
 }
