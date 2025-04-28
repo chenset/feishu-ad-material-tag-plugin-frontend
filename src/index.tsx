@@ -291,14 +291,15 @@ function LoadApp() {
         <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
       </div>
       <div style={{ marginTop: 10 }}>
-        <div>请选择标签回写字段</div>
+        <div>请选择元素标签回写字段</div>
         <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
+      <div style={{ marginTop: 10 }}>
+        <div>请选择风格标签回写字段</div>
+        <Select style={{ width: '100%' }} allowClear value={selectStyleField} onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      </div>
 
-      {/* <div style={{ margin: 10 }}>
-      <div>风格</div>
-      <Select style={{ width: 120 }} allowClear onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
-    </div>
+      {/* 
     <div style={{ margin: 10 }}>
       <div>题材</div>
       <Select style={{ width: 120 }} allowClear onSelect={setSelectThemeField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
