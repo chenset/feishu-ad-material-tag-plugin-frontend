@@ -33,7 +33,7 @@ function LoadApp() {
   const [selectStyleField, setSelectStyleField] = useState<string>(cacheSelectVal['style'] || '');
   const [selectThemeField, setSelectThemeField] = useState<string>(cacheSelectVal['theme'] || '');
   const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
-  
+
   // Add state for custom API URL
   const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'https://feishu-g-plugin-zacgffzypr.cn-shenzhen.fcapp.run/feishu-ad-material-tag-plugin/image-tag');
 
@@ -181,7 +181,7 @@ function LoadApp() {
             recordId,
             index: i + 1,
             time: new Date().toLocaleTimeString(),
-            status:'skipped',
+            status: 'skipped',
             message: '此功能目前仅支持提取图片类型的附件',
             total: totalRecords
           }]);
@@ -222,13 +222,13 @@ function LoadApp() {
           });
           // 将响应结果写入复选框
           if (elementField && elementVal === null) {
-            await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList : []);
+            await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList.filter((element: any, i: any) => i === result.elementList.indexOf(element)) : []);
           }
           if (styleField && styleVal === null) {
-            await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList : []);
+            await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList.filter((element: any, i: any) => i === result.styleList.indexOf(element)) : []);
           }
           if (themeField && themeVal === null) {
-            await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList : []);
+            await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList.filter((element: any, i: any) => i === result.themeList.indexOf(element)) : []);
           }
           if (copywritingField && copywritingVal === null) {
             await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
@@ -265,7 +265,7 @@ function LoadApp() {
       if (skipItems === recordIdList.length) {
         Modal.warning({ title: '提示', content: '没有需要处理的行', });
       } else {
-        Modal.info({ title: '提示', content: `${totalRecords} 行处理完成, ${skipItems} 行跳过, ${failedItems} 行失败, ${totalRecords-skipItems-failedItems}行成功`, });
+        Modal.info({ title: '提示', content: `${totalRecords} 行处理完成, ${skipItems} 行跳过, ${failedItems} 行失败, ${totalRecords - skipItems - failedItems}行成功`, });
       }
       // 结束加载
       setLoading(false);
@@ -356,9 +356,9 @@ function LoadApp() {
     </div>
 
     {/* Custom API URL input field fixed at the bottom */}
-    <div style={{ 
-      position: 'fixed', 
-      bottom: '10px', 
+    <div style={{
+      position: 'fixed',
+      bottom: '10px',
       left: '0',
       width: '100%',
       padding: '0 10px',
@@ -368,11 +368,11 @@ function LoadApp() {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '5px 0' }}>
         <label style={{ fontSize: '12px', marginRight: '5px', whiteSpace: 'nowrap' }}>自定义服务器API地址:</label>
-        <input 
-          type="text" 
-          value={customApiUrl} 
+        <input
+          type="text"
+          value={customApiUrl}
           onChange={handleCustomApiUrlChange}
-          style={{ 
+          style={{
             flex: 1,
             padding: '4px 8px',
             fontSize: '12px',
