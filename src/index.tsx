@@ -105,8 +105,6 @@ function LoadApp() {
     const recordIdList = await table.getRecordIdList();
     const totalRecords = recordIdList.length;
 
-    console.log(table.id)
-
     // 开始加载
     setLoading(true);
     let skipItems = 0;
@@ -176,7 +174,7 @@ function LoadApp() {
           continue;
         }
         //附件字段是否包含非图片附件
-        const containNonImage = val.some(file => !file.type.startsWith('image/'));
+        const containNonImage = val.some(file => !file.type.startsWith('image/') && !file.type.startsWith('video/'));
         if (containNonImage) {
           skipItems++;
           setLogs(prev => [...prev, {
@@ -184,7 +182,7 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '此功能目前仅支持提取图片类型的附件',
+            message: '此功能目前仅支持提取图片和视频类型的附件',
             total: totalRecords
           }]);
           continue;
@@ -222,7 +220,6 @@ function LoadApp() {
             recordId: recordId,
             tableId: table.id
           });
-          console.log(result);
           // 计算耗时
           const duration = (new Date().getTime() - startTime.getTime()) / 1000;
           // 记录处理成功的日志
