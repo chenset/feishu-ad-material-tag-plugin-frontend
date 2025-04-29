@@ -105,6 +105,8 @@ function LoadApp() {
     const recordIdList = await table.getRecordIdList();
     const totalRecords = recordIdList.length;
 
+    console.log(table.id)
+
     // 开始加载
     setLoading(true);
     let skipItems = 0;
@@ -220,31 +222,47 @@ function LoadApp() {
             recordId: recordId,
             tableId: table.id
           });
-          // 将响应结果写入复选框
-          if (elementField && elementVal === null) {
-            await elementField.setValue(recordId, Array.isArray(result.elementList) ? result.elementList.filter((element: any, i: any) => i === result.elementList.indexOf(element)) : []);
-          }
-          if (styleField && styleVal === null) {
-            await styleField.setValue(recordId, Array.isArray(result.styleList) ? result.styleList.filter((element: any, i: any) => i === result.styleList.indexOf(element)) : []);
-          }
-          if (themeField && themeVal === null) {
-            await themeField.setValue(recordId, Array.isArray(result.themeList) ? result.themeList.filter((element: any, i: any) => i === result.themeList.indexOf(element)) : []);
-          }
-          if (copywritingField && copywritingVal === null) {
-            await copywritingField.setValue(recordId, Array.isArray(result.copyWritingList) ? JSON.stringify(result.copyWritingList) : '');
-          }
+          console.log(result);
           // 计算耗时
           const duration = (new Date().getTime() - startTime.getTime()) / 1000;
-
           // 记录处理成功的日志
-          setLogs(prev => [...prev, {
-            recordId,
-            index: i + 1,
-            time: new Date().toLocaleTimeString(),
-            status: 'success',
-            message: `处理完成 (耗时: ${duration.toFixed(2)}秒)` + (result.msg ? `: ${result.msg}` : ''),
-            total: totalRecords
-          }]);
+          if(result.resultCode && result.resultCode === 1) {
+            // 将响应结果写入复选框
+            const data = result.data;
+            if (data) {
+              if (elementField && elementVal === null) {
+                await elementField.setValue(recordId, Array.isArray(data.elementList) ? data.elementList.filter((element: any, i: any) => i === data.elementList.indexOf(element)) : []);
+              }
+              if (styleField && styleVal === null) {
+                await styleField.setValue(recordId, Array.isArray(data.styleList) ? data.styleList.filter((element: any, i: any) => i === data.styleList.indexOf(element)) : []);
+              }
+              if (themeField && themeVal === null) {
+                await themeField.setValue(recordId, Array.isArray(data.themeList) ? data.themeList.filter((element: any, i: any) => i === data.themeList.indexOf(element)) : []);
+              }
+              if (copywritingField && copywritingVal === null) {
+                await copywritingField.setValue(recordId, Array.isArray(data.copyWritingList) ? JSON.stringify(data.copyWritingList) : '');
+              }
+            }
+            setLogs(prev => [...prev, {
+              recordId,
+              index: i + 1,
+              time: new Date().toLocaleTimeString(),
+              status: 'success',
+              message: `处理完成 (耗时: ${duration.toFixed(2)}秒)` + (result.msg ? `: ${result.msg}` : ''),
+              total: totalRecords
+            }]);
+          } else {
+            failedItems++;
+            console.error('API调用结果失败:', result);
+            setLogs(prev => [...prev, {
+              recordId,
+              index: i + 1,
+              time: new Date().toLocaleTimeString(),
+              status:'error',
+              message: `处理失败 (耗时: ${duration.toFixed(2)}秒): ${result.msg}`,
+              total: totalRecords
+            }]);
+          }
         } catch (error) {
           failedItems++;
           console.error('API调用失败:', error);
