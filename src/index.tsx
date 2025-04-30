@@ -182,7 +182,7 @@ function LoadApp() {
             index: i + 1,
             time: new Date().toLocaleTimeString(),
             status: 'skipped',
-            message: '此功能目前仅支持提取图片和视频类型的附件',
+            message: '此功能目前仅支持提取图片类型的附件',
             total: totalRecords
           }]);
           continue;
@@ -303,15 +303,15 @@ function LoadApp() {
 
       <div style={{ marginTop: 10 }}>
         <div>请选择图片所在字段</div>
-        <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
+        <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} onClear={() => setSelectAttachmentField('')} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
       </div>
       <div style={{ marginTop: 10 }}>
         <div>请选择元素标签回写字段</div>
-        <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+        <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} onClear={() => setSelectElementField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
       <div style={{ marginTop: 10 }}>
         <div>请选择风格标签回写字段</div>
-        <Select style={{ width: '100%' }} allowClear value={selectStyleField} onSelect={setSelectStyleField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+        <Select style={{ width: '100%' }} allowClear value={selectStyleField} onSelect={setSelectStyleField} onClear={() => setSelectStyleField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
 
       {/* 
