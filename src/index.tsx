@@ -102,7 +102,16 @@ function LoadApp() {
     const styleField = selectStyleField ? await table.getField<IMultiSelectField>(selectStyleField) : null;
     const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
-    const recordIdList = await table.getRecordIdList();
+    //获取选择的视图
+    const selection = await bitable.base.getSelection();
+    const activeViewId = selection.viewId;
+    // 由于 activeViewId 可能为 null，需要做非空判断
+    if (!activeViewId) {
+      Modal.warning({ title: '提示', content: '视图不存在', });
+      return;
+    }
+    const view = table.getViewById(activeViewId);
+    const recordIdList = await (await view).getVisibleRecordIdList();
     const totalRecords = recordIdList.length;
 
     // 开始加载
@@ -113,7 +122,10 @@ function LoadApp() {
       //遍历每一行
       for (let i = 0; i < recordIdList.length; i++) {
         const recordId = recordIdList[i];
-
+        if (!recordId) {
+          continue;
+        }
+        console.log('recordId', recordId);
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
         //选择字段对应行的值
