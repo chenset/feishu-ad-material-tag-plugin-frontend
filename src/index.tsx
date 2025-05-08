@@ -324,12 +324,12 @@ function LoadApp() {
         <div>请选择风格标签回写字段</div>
         <Select style={{ width: '100%' }} allowClear value={selectStyleField} onSelect={setSelectStyleField} onClear={() => setSelectStyleField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
+      <div style={{ marginTop: 10 }}>
+        <div>题材</div>
+        <Select style={{ width: '100%' }} allowClear value={selectThemeField} onSelect={setSelectThemeField} onClear={() => setSelectStyleField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      </div>
 
       {/* 
-    <div style={{ margin: 10 }}>
-      <div>题材</div>
-      <Select style={{ width: 120 }} allowClear onSelect={setSelectThemeField} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
-    </div>
     <div style={{ margin: 10 }}>
       <div>文案</div>
       <Select style={{ width: 120 }} allowClear onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
