@@ -125,7 +125,6 @@ function LoadApp() {
         if (!recordId) {
           continue;
         }
-        console.log('recordId', recordId);
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
         //选择字段对应行的值
