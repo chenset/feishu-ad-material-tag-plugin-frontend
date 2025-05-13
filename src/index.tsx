@@ -326,7 +326,7 @@ function LoadApp() {
       </div>
       <div style={{ marginTop: 10 }}>
         <div>题材</div>
-        <Select style={{ width: '100%' }} allowClear value={selectThemeField} onSelect={setSelectThemeField} onClear={() => setSelectStyleField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+        <Select style={{ width: '100%' }} allowClear value={selectThemeField} onSelect={setSelectThemeField} onClear={() => setSelectThemeField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
       </div>
 
       {/* 
