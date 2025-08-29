@@ -33,6 +33,13 @@ function LoadApp() {
   const [selectStyleField, setSelectStyleField] = useState<string>(cacheSelectVal['style'] || '');
   const [selectThemeField, setSelectThemeField] = useState<string>(cacheSelectVal['theme'] || '');
   const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
+  const [selectVisualSubjectField, setSelectVisualSubjectField] = useState<string>(cacheSelectVal['visualSubject'] || '');
+  const [selectPresentationTypeField, setSelectPresentationTypeField] = useState<string>(cacheSelectVal['presentationType'] || '');
+  const [selectCoreHighlightField, setSelectCoreHighlightField] = useState<string>(cacheSelectVal['coreHighlight'] || '');
+
+  // Add state for keywords
+  const [picPrompt, setPicPrompt] = useState<string>(localStorage.getItem('picPrompt') || '');
+  const [vidPrompt, setVidPrompt] = useState<string>(localStorage.getItem('vidPrompt') || '');
 
   // Add state for custom API URL
   const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'https://feishu-g-plugin-zacgffzypr.cn-shenzhen.fcapp.run/feishu-ad-material-tag-plugin/image-tag');
@@ -42,6 +49,19 @@ function LoadApp() {
     const newUrl = e.target.value;
     setCustomApiUrl(newUrl);
     localStorage.setItem('customApiUrl', newUrl);
+  };
+
+  // Function to handle keyword changes
+  const handlePicPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newPrompt = e.target.value;
+    setPicPrompt(newPrompt);
+    localStorage.setItem('picPrompt', newPrompt);
+  };
+
+  const handleVidPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newPrompt = e.target.value;
+    setVidPrompt(newPrompt);
+    localStorage.setItem('vidPrompt', newPrompt);
   };
 
   useEffect(() => {
@@ -85,14 +105,17 @@ function LoadApp() {
     cacheSelectVal['style'] = selectStyleField
     cacheSelectVal['theme'] = selectThemeField
     cacheSelectVal['copywriting'] = selectCopywritingField
+    cacheSelectVal['visualSubject'] = selectVisualSubjectField
+    cacheSelectVal['presentationType'] = selectPresentationTypeField
+    cacheSelectVal['coreHighlight'] = selectCoreHighlightField
     localStorage.setItem(selectDefaultValueKey, JSON.stringify(cacheSelectVal))
 
     if (!selectAttachmentField) {
       Modal.warning({ title: '提示', content: '请选择图片字段', });
       return;
     }
-    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField) {
-      Modal.warning({ title: '提示', content: '元素、风格、题材、文案至少选择一个', });
+    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField && !selectVisualSubjectField && !selectPresentationTypeField && !selectCoreHighlightField) {
+      Modal.warning({ title: '提示', content: '元素、风格、题材、文案、视觉主体、呈现型、核心突出点至少选择一个', });
       return;
     }
     //选择的字段
@@ -102,6 +125,9 @@ function LoadApp() {
     const styleField = selectStyleField ? await table.getField<IMultiSelectField>(selectStyleField) : null;
     const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
     const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
+    const visualSubjectField = selectVisualSubjectField ? await table.getField<IMultiSelectField>(selectVisualSubjectField) : null;
+    const presentationTypeField = selectPresentationTypeField ? await table.getField<IMultiSelectField>(selectPresentationTypeField) : null;
+    const coreHighlightField = selectCoreHighlightField ? await table.getField<IMultiSelectField>(selectCoreHighlightField) : null;
     //获取选择的视图
     const selection = await bitable.base.getSelection();
     const activeViewId = selection.viewId;
@@ -153,6 +179,27 @@ function LoadApp() {
         if (copywritingField) {
           copywritingVal = await copywritingField.getValue(recordId);
           if (copywritingVal === null) {
+            needCallApi = true;
+          }
+        }
+        let visualSubjectVal = null;
+        if (visualSubjectField) {
+          visualSubjectVal = await visualSubjectField.getValue(recordId);
+          if (visualSubjectVal === null) {
+            needCallApi = true;
+          }
+        }
+        let presentationTypeVal = null;
+        if (presentationTypeField) {
+          presentationTypeVal = await presentationTypeField.getValue(recordId);
+          if (presentationTypeVal === null) {
+            needCallApi = true;
+          }
+        }
+        let coreHighlightVal = null;
+        if (coreHighlightField) {
+          coreHighlightVal = await coreHighlightField.getValue(recordId);
+          if (coreHighlightVal === null) {
             needCallApi = true;
           }
         }
@@ -229,7 +276,9 @@ function LoadApp() {
           const result = await jsonpRequest(customApiUrl, {
             files: urls,
             recordId: recordId,
-            tableId: table.id
+            tableId: table.id,
+            picPrompt: picPrompt,
+            vidPrompt: vidPrompt
           });
           // 计算耗时
           const duration = (new Date().getTime() - startTime.getTime()) / 1000;
@@ -249,6 +298,15 @@ function LoadApp() {
               }
               if (copywritingField && copywritingVal === null) {
                 await copywritingField.setValue(recordId, Array.isArray(data.copyWritingList) ? JSON.stringify(data.copyWritingList) : '');
+              }
+              if (visualSubjectField && visualSubjectVal === null) {
+                await visualSubjectField.setValue(recordId, Array.isArray(data.visualSubjectList) ? data.visualSubjectList.filter((element: any, i: any) => i === data.visualSubjectList.indexOf(element)) : []);
+              }
+              if (presentationTypeField && presentationTypeVal === null) {
+                await presentationTypeField.setValue(recordId, Array.isArray(data.presentationTypeList) ? data.presentationTypeList.filter((element: any, i: any) => i === data.presentationTypeList.indexOf(element)) : []);
+              }
+              if (coreHighlightField && coreHighlightVal === null) {
+                await coreHighlightField.setValue(recordId, Array.isArray(data.coreHighlightList) ? data.coreHighlightList.filter((element: any, i: any) => i === data.coreHighlightList.indexOf(element)) : []);
               }
             }
             setLogs(prev => [...prev, {
@@ -308,105 +366,443 @@ function LoadApp() {
     }
   }, [logs]);
 
-  return <div style={{}}>
+  return <div style={{
+    minHeight: '100vh',
+    padding: '20px 0',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+  }}>
 
-    <div style={{ width: 200, margin: '0 auto', textAlign: 'left' }}>
+    <div style={{ 
+      maxWidth: 400, 
+      margin: '0 auto', 
+      textAlign: 'left',
+      background: 'rgba(255, 255, 255, 0.95)',
+      borderRadius: '16px',
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      padding: '24px'
+    }}>
 
-      <div style={{ marginTop: 10 }}>
-        <div>请选择图片所在字段</div>
-        <Select style={{ width: '100%' }} allowClear={true} value={selectAttachmentField} onSelect={setSelectAttachmentField} onClear={() => setSelectAttachmentField('')} options={formatFieldAttachmentMetaList(attachmentFieldMetaList)} />
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ 
+          fontSize: '14px', 
+          fontWeight: '600', 
+          color: '#2c3e50', 
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          📎 请选择图片所在字段
+        </div>
+        <Select 
+          style={{ width: '100%', borderRadius: '8px' }} 
+          allowClear={true} 
+          value={selectAttachmentField} 
+          onSelect={setSelectAttachmentField} 
+          onClear={() => setSelectAttachmentField('')} 
+          options={formatFieldAttachmentMetaList(attachmentFieldMetaList)}
+          placeholder="选择图片字段"
+        />
       </div>
-      <div style={{ marginTop: 10 }}>
-        <div>请选择<span style={{ fontWeight: 'bold', color: 'coral' }}>元素</span>标签回写字段</div>
-        <Select style={{ width: '100%' }} allowClear value={selectElementField} onSelect={setSelectElementField} onClear={() => setSelectElementField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ 
+          fontSize: '14px', 
+          fontWeight: '600', 
+          color: '#2c3e50', 
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          🖼️ 图片关键词
+        </div>
+        <textarea
+          value={picPrompt}
+          onChange={handlePicPromptChange}
+          style={{
+            width: '100%',
+            height: '90px',
+            padding: '12px',
+            fontSize: '14px',
+            border: '2px solid #e3f2fd',
+            borderRadius: '8px',
+            boxSizing: 'border-box',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            backgroundColor: '#fafbfc',
+            transition: 'all 0.2s ease',
+            outline: 'none'
+          }}
+          placeholder="请输入图片关键词（支持多行输入）..."
+          onFocus={(e) => e.target.style.borderColor = '#667eea'}
+          onBlur={(e) => e.target.style.borderColor = '#e3f2fd'}
+        />
       </div>
-      <div style={{ marginTop: 10 }}>
-        <div>请选择<span style={{ fontWeight: 'bold', color: 'coral' }}>风格</span>标签回写字段</div>
-        <Select style={{ width: '100%' }} allowClear value={selectStyleField} onSelect={setSelectStyleField} onClear={() => setSelectStyleField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ 
+          fontSize: '14px', 
+          fontWeight: '600', 
+          color: '#2c3e50', 
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          🎬 视频关键词
+        </div>
+        <textarea
+          value={vidPrompt}
+          onChange={handleVidPromptChange}
+          style={{
+            width: '100%',
+            height: '90px',
+            padding: '12px',
+            fontSize: '14px',
+            border: '2px solid #e3f2fd',
+            borderRadius: '8px',
+            boxSizing: 'border-box',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            backgroundColor: '#fafbfc',
+            transition: 'all 0.2s ease',
+            outline: 'none'
+          }}
+          placeholder="请输入视频关键词（支持多行输入）..."
+          onFocus={(e) => e.target.style.borderColor = '#667eea'}
+          onBlur={(e) => e.target.style.borderColor = '#e3f2fd'}
+        />
       </div>
-      <div style={{ marginTop: 10 }}>
-        <div>请选择<span style={{ fontWeight: 'bold', color: 'coral' }}>题材</span>标签回写字段</div>
-        <Select style={{ width: '100%' }} allowClear value={selectThemeField} onSelect={setSelectThemeField} onClear={() => setSelectThemeField('')} options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)} />
+      <div style={{ 
+        background: 'rgba(102, 126, 234, 0.05)', 
+        borderRadius: '12px', 
+        padding: '16px', 
+        marginBottom: '20px',
+        border: '1px solid rgba(102, 126, 234, 0.1)'
+      }}>
+        <div style={{ 
+          fontSize: '16px', 
+          fontWeight: '700', 
+          color: '#667eea', 
+          marginBottom: '16px',
+          textAlign: 'center'
+        }}>
+          🏷️ 标签字段配置
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            🧩 <span style={{ marginLeft: '4px', color: '#ff6b6b' }}>元素</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectElementField} 
+            onSelect={setSelectElementField} 
+            onClear={() => setSelectElementField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择元素标签字段"
+          />
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            🎨 <span style={{ marginLeft: '4px', color: '#4ecdc4' }}>风格</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectStyleField} 
+            onSelect={setSelectStyleField} 
+            onClear={() => setSelectStyleField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择风格标签字段"
+          />
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            📖 <span style={{ marginLeft: '4px', color: '#a29bfe' }}>题材</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectThemeField} 
+            onSelect={setSelectThemeField} 
+            onClear={() => setSelectThemeField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择题材标签字段"
+          />
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            👁️ <span style={{ marginLeft: '4px', color: '#fd79a8' }}>视觉主体</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectVisualSubjectField} 
+            onSelect={setSelectVisualSubjectField} 
+            onClear={() => setSelectVisualSubjectField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择视觉主体字段"
+          />
+        </div>
+        
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            🎭 <span style={{ marginLeft: '4px', color: '#74b9ff' }}>呈现型</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectPresentationTypeField} 
+            onSelect={setSelectPresentationTypeField} 
+            onClear={() => setSelectPresentationTypeField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择呈现型字段"
+          />
+        </div>
+        
+        <div>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            ⭐ <span style={{ marginLeft: '4px', color: '#fdcb6e' }}>核心突出点</span>标签回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectCoreHighlightField} 
+            onSelect={setSelectCoreHighlightField} 
+            onClear={() => setSelectCoreHighlightField('')} 
+            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
+            placeholder="选择核心突出点字段"
+          />
+        </div>
       </div>
 
-      {/* 
-    <div style={{ margin: 10 }}>
-      <div>文案</div>
-      <Select style={{ width: 120 }} allowClear onSelect={setSelectCopywritingField} options={formatFieldTextMetaList(textFieldMetaList)} />
-    </div> */}
-      <div style={{ marginTop: 20 }}>
-        <Button style={{ width: 200 }} type="primary" onClick={submit} loading={loading}>执行处理</Button>
+      <div style={{ textAlign: 'center', marginTop: 30 }}>
+        <Button 
+          size="large"
+          type="primary" 
+          onClick={submit} 
+          loading={loading}
+          style={{
+            width: '100%',
+            height: '48px',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '600',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              (e.target as HTMLElement).style.transform = 'translateY(-2px)';
+              (e.target as HTMLElement).style.boxShadow = '0 12px 30px rgba(102, 126, 234, 0.4)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.transform = 'translateY(0)';
+            (e.target as HTMLElement).style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.3)';
+          }}
+        >
+          {loading ? '🔄 处理中...' : '🚀 执行处理'}
+        </Button>
       </div>
     </div>
 
-    {/* 新增日志区域 */}
-    <div style={{ padding: 10, marginTop: 20, width: '100%' }}>
-      <div style={{ borderBottom: '1px solid #eee', paddingBottom: 5, marginBottom: 10 }}>处理日志</div>
+    {/* 优化后的日志区域 */}
+    <div style={{ 
+      maxWidth: 400, 
+      margin: '20px auto 80px auto', 
+      background: 'rgba(255, 255, 255, 0.95)',
+      borderRadius: '16px',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      padding: '20px'
+    }}>
+      <div style={{ 
+        fontSize: '16px',
+        fontWeight: '700',
+        color: '#2c3e50',
+        marginBottom: '16px',
+        textAlign: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        📊 处理日志
+      </div>
       <div
         ref={logContainerRef}
         style={{
-          maxHeight: 205,
+          maxHeight: 250,
           overflowY: 'auto',
-          border: '1px solid #eee',
-          padding: 10,
-          borderRadius: 4,
-          fontSize: '12px'
+          border: '2px solid #f1f3f4',
+          padding: 12,
+          borderRadius: 12,
+          fontSize: '13px',
+          backgroundColor: '#fafbfc'
         }}
       >
         {logs.length === 0 ?
-          <div style={{ color: '#999', textAlign: 'center' }}>暂无日志</div> :
+          <div style={{ 
+            color: '#8e9aaf', 
+            textAlign: 'center',
+            padding: '20px',
+            fontStyle: 'italic'
+          }}>
+            📝 暂无处理日志
+          </div> :
           logs.map((log, index) => (
             <div key={index} style={{
-              marginBottom: 5,
-              padding: 5,
-              backgroundColor: log.status === 'error' ? '#fff2f0' :
-                log.status === 'success' ? '#f6ffed' :
-                  log.status === 'processing' ? '#e6f7ff' : '#f5f5f5',
-              borderRadius: 2
+              marginBottom: 8,
+              padding: 12,
+              backgroundColor: log.status === 'error' ? '#fee7e6' :
+                log.status === 'success' ? '#e8f5e8' :
+                  log.status === 'processing' ? '#e3f2fd' : '#f5f6fa',
+              borderRadius: 8,
+              border: `1px solid ${log.status === 'error' ? '#ffcccb' :
+                log.status === 'success' ? '#c8e6c9' :
+                  log.status === 'processing' ? '#bbdefb' : '#e1e5e9'}`,
+              transition: 'all 0.2s ease'
             }}>
-              <span style={{ color: '#666' }}>{log.time}</span> -
-              <span>{log.total}/{log.index}</span> -
-              <span style={{
-                color: log.status === 'error' ? '#f5222d' :
-                  log.status === 'success' ? '#52c41a' :
-                    log.status === 'processing' ? '#1890ff' : '#8c8c8c'
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: 4,
+                fontSize: '12px'
               }}>
-                {log.status === 'error' ? '错误' :
-                  log.status === 'success' ? '成功' :
-                    log.status === 'processing' ? '处理中' : '跳过'}
-              </span> -
-              <span>{log.message}</span>
+                <span style={{ 
+                  color: '#666',
+                  marginRight: '8px'
+                }}>🕐 {log.time}</span>
+                <span style={{ 
+                  background: 'rgba(102, 126, 234, 0.1)',
+                  color: '#667eea',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}>
+                  {log.index}/{log.total}
+                </span>
+                <span style={{
+                  marginLeft: '8px',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  backgroundColor: log.status === 'error' ? '#f5222d' :
+                    log.status === 'success' ? '#52c41a' :
+                      log.status === 'processing' ? '#1890ff' : '#8c8c8c',
+                  color: 'white'
+                }}>
+                  {log.status === 'error' ? '❌ 错误' :
+                    log.status === 'success' ? '✅ 成功' :
+                      log.status === 'processing' ? '⏳ 处理中' : '⏭️ 跳过'}
+                </span>
+              </div>
+              <div style={{ color: '#2c3e50', fontSize: '13px' }}>
+                {log.message}
+              </div>
             </div>
           ))
         }
       </div>
     </div>
 
-    {/* Custom API URL input field fixed at the bottom */}
+    {/* 优化后的底部API地址输入区域 */}
     <div style={{
       position: 'fixed',
-      bottom: '10px',
+      bottom: '0',
       left: '0',
-      width: '100%',
-      padding: '0 10px',
-      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-      borderTop: '1px solid #eee',
-      zIndex: 100
+      right: '0',
+      background: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(20px)',
+      borderTop: '2px solid rgba(102, 126, 234, 0.2)',
+      padding: '12px 20px',
+      zIndex: 1000,
+      boxShadow: '0 -10px 30px rgba(0, 0, 0, 0.1)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '5px 0' }}>
-        <label style={{ fontSize: '12px', marginRight: '5px', whiteSpace: 'nowrap' }}>自定义服务器API地址:</label>
+      <div style={{ 
+        maxWidth: 400,
+        margin: '0 auto',
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px'
+      }}>
+        <label style={{ 
+          fontSize: '13px', 
+          fontWeight: '600',
+          color: '#2c3e50',
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          🔗 API地址:
+        </label>
         <input
           type="text"
           value={customApiUrl}
           onChange={handleCustomApiUrlChange}
           style={{
             flex: 1,
-            padding: '4px 8px',
-            fontSize: '12px',
-            border: '1px solid #d9d9d9',
-            borderRadius: '4px'
+            padding: '8px 12px',
+            fontSize: '13px',
+            border: '2px solid #e3f2fd',
+            borderRadius: '8px',
+            backgroundColor: '#fafbfc',
+            transition: 'all 0.2s ease',
+            outline: 'none'
           }}
-          placeholder="请输入自定义API地址"
+          placeholder="输入自定义API服务器地址..."
+          onFocus={(e) => e.target.style.borderColor = '#667eea'}
+          onBlur={(e) => e.target.style.borderColor = '#e3f2fd'}
         />
       </div>
     </div>
