@@ -421,7 +421,7 @@ function LoadApp() {
           onChange={handlePicPromptChange}
           style={{
             width: '100%',
-            height: '90px',
+            height: '480px',
             padding: '12px',
             fontSize: '14px',
             border: '2px solid #e3f2fd',
@@ -454,7 +454,7 @@ function LoadApp() {
           onChange={handleVidPromptChange}
           style={{
             width: '100%',
-            height: '90px',
+            height: '480px',
             padding: '12px',
             fontSize: '14px',
             border: '2px solid #e3f2fd',
