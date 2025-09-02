@@ -60,18 +60,12 @@ function LoadApp() {
   // Function to handle keyword changes
   const handlePicPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = e.target.value;
-    if(!newPrompt){
-      return
-    }
     setPicPrompt(newPrompt);
     localStorage.setItem('picPrompt', newPrompt);
   };
 
   const handleVidPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = e.target.value;
-    if(!newPrompt){
-      return
-    }
     setVidPrompt(newPrompt);
     localStorage.setItem('vidPrompt', newPrompt);
   };
