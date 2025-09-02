@@ -912,7 +912,7 @@ async function jsonpRequest(reqUrl: string, params: Record<string, any>, timeout
 
     // 创建 script 元素
     const scriptEl: HTMLScriptElement = document.createElement('script');
-    scriptEl.src = reqUrl;
+    scriptEl.src = reqUrl+'&v22='+new Date().getTime();
     scriptEl.defer = true;
     scriptEl.async = true;
 
