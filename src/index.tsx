@@ -41,6 +41,12 @@ function LoadApp() {
   const [picPrompt, setPicPrompt] = useState<string>(localStorage.getItem('picPrompt') || '');
   const [vidPrompt, setVidPrompt] = useState<string>(localStorage.getItem('vidPrompt') || '');
 
+  // Add state for keyword options
+  const [keywordOptions, setKeywordOptions] = useState<{
+    pic: Array<{prompt: string, promptHash: string, createTime: string}>,
+    vid: Array<{prompt: string, promptHash: string, createTime: string}>
+  }>({pic: [], vid: []});
+
   // Add state for custom API URL
   const [customApiUrl, setCustomApiUrl] = useState<string>(localStorage.getItem('customApiUrl') || 'https://feishu-g-plugin-zacgffzypr.cn-shenzhen.fcapp.run/feishu-ad-material-tag-plugin/image-tag');
 
@@ -54,14 +60,54 @@ function LoadApp() {
   // Function to handle keyword changes
   const handlePicPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = e.target.value;
+    if(!newPrompt){
+      return
+    }
     setPicPrompt(newPrompt);
     localStorage.setItem('picPrompt', newPrompt);
   };
 
   const handleVidPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = e.target.value;
+    if(!newPrompt){
+      return
+    }
     setVidPrompt(newPrompt);
     localStorage.setItem('vidPrompt', newPrompt);
+  };
+
+  // Function to fetch keyword options
+  const fetchKeywordOptions = async () => {
+    try {
+      // 使用customApiUrl的域名构建查询关键词的API URL
+      const url = new URL(customApiUrl);
+      const baseUrl = `${url.protocol}//${url.host}`;
+      const apiUrl = `${baseUrl}/feishu-ad-material-tag-plugin/query-keywords`;
+      const result = await jsonpRequest(apiUrl, {});
+      console.log('Keyword options result:', result);
+      if (result.resultCode === 1 && result.data && result.data.keywordMap) {
+        setKeywordOptions(result.data.keywordMap);
+        console.log('Set keyword options:', result.data.keywordMap);
+      } else {
+        console.log('API response structure:', result);
+      }
+    } catch (error) {
+      console.error('Failed to fetch keyword options:', error);
+    }
+  };
+
+  // Handle dropdown selection
+  const handlePicPromptSelect = (value: string | null, option: any) => {
+    if (value !== null) {
+      setPicPrompt(value);
+    }
+  };
+
+  const handleVidPromptSelect = (value: string | null, option: any) => {
+    if (value && value !== '') {
+      setVidPrompt(value);
+      localStorage.setItem('vidPrompt', value);
+    }
   };
 
   useEffect(() => {
@@ -80,6 +126,7 @@ function LoadApp() {
       setTextMetaList(fieldTextMetaList);
     };
     fn();
+    fetchKeywordOptions();
   }, []);
 
   const formatFieldAttachmentMetaList = (metaList: IAttachmentFieldMeta[]) => {
@@ -385,10 +432,10 @@ function LoadApp() {
     }}>
 
       <div style={{ marginBottom: 20 }}>
-        <div style={{ 
-          fontSize: '14px', 
-          fontWeight: '600', 
-          color: '#2c3e50', 
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: '#2c3e50',
           marginBottom: '8px',
           display: 'flex',
           alignItems: 'center'
@@ -416,6 +463,19 @@ function LoadApp() {
         }}>
           🖼️ 图片关键词
         </div>
+        <Select
+          style={{ width: '100%', marginBottom: '8px' }}
+          placeholder="选择图片历史提示词"
+          allowClear
+          onSelect={handlePicPromptSelect}
+          value={null}
+          options={keywordOptions.pic ? keywordOptions.pic.map(item => ({
+              label: item.createTime,
+              value: item.prompt,
+              title: item.prompt
+            })) : []
+          }
+        />
         <textarea
           value={picPrompt}
           onChange={handlePicPromptChange}
@@ -449,6 +509,19 @@ function LoadApp() {
         }}>
           🎬 视频关键词
         </div>
+        <Select
+          style={{ width: '100%', marginBottom: '8px' }}
+          placeholder="选择视频历史提示词"
+          allowClear
+          onSelect={handleVidPromptSelect}
+          value={null}
+          options={keywordOptions.vid ? keywordOptions.vid.map(item => ({
+              label: item.createTime,
+              value: item.prompt,
+              title: item.prompt
+            })) : []
+          }
+        />
         <textarea
           value={vidPrompt}
           onChange={handleVidPromptChange}
