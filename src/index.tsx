@@ -36,6 +36,7 @@ function LoadApp() {
   const [selectVisualSubjectField, setSelectVisualSubjectField] = useState<string>(cacheSelectVal['visualSubject'] || '');
   const [selectPresentationTypeField, setSelectPresentationTypeField] = useState<string>(cacheSelectVal['presentationType'] || '');
   const [selectCoreHighlightField, setSelectCoreHighlightField] = useState<string>(cacheSelectVal['coreHighlight'] || '');
+  const [selectCoreCopyField, setSelectCoreCopyField] = useState<string>(cacheSelectVal['coreCopy'] || '');
 
   // Add state for keywords
   const [picPrompt, setPicPrompt] = useState<string>(localStorage.getItem('picPrompt') || '');
@@ -149,14 +150,15 @@ function LoadApp() {
     cacheSelectVal['visualSubject'] = selectVisualSubjectField
     cacheSelectVal['presentationType'] = selectPresentationTypeField
     cacheSelectVal['coreHighlight'] = selectCoreHighlightField
+    cacheSelectVal['coreCopy'] = selectCoreCopyField
     localStorage.setItem(selectDefaultValueKey, JSON.stringify(cacheSelectVal))
 
     if (!selectAttachmentField) {
       Modal.warning({ title: '提示', content: '请选择图片字段', });
       return;
     }
-    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField && !selectVisualSubjectField && !selectPresentationTypeField && !selectCoreHighlightField) {
-      Modal.warning({ title: '提示', content: '元素、风格、题材、文案、视觉主体、呈现型、核心突出点至少选择一个', });
+    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField && !selectVisualSubjectField && !selectPresentationTypeField && !selectCoreHighlightField && !selectCoreCopyField) {
+      Modal.warning({ title: '提示', content: '元素、风格、题材、文案、视觉主体、呈现型、核心突出点、核心文案至少选择一个', });
       return;
     }
     //选择的字段
@@ -169,6 +171,7 @@ function LoadApp() {
     const visualSubjectField = selectVisualSubjectField ? await table.getField<IMultiSelectField>(selectVisualSubjectField) : null;
     const presentationTypeField = selectPresentationTypeField ? await table.getField<IMultiSelectField>(selectPresentationTypeField) : null;
     const coreHighlightField = selectCoreHighlightField ? await table.getField<IMultiSelectField>(selectCoreHighlightField) : null;
+    const coreCopyField = selectCoreCopyField ? await table.getField<ITextField>(selectCoreCopyField) : null;
     //获取选择的视图
     const selection = await bitable.base.getSelection();
     const activeViewId = selection.viewId;
@@ -241,6 +244,13 @@ function LoadApp() {
         if (coreHighlightField) {
           coreHighlightVal = await coreHighlightField.getValue(recordId);
           if (coreHighlightVal === null) {
+            needCallApi = true;
+          }
+        }
+        let coreCopyVal = null;
+        if (coreCopyField) {
+          coreCopyVal = await coreCopyField.getValue(recordId);
+          if (coreCopyVal === null) {
             needCallApi = true;
           }
         }
@@ -348,6 +358,9 @@ function LoadApp() {
               }
               if (coreHighlightField && coreHighlightVal === null) {
                 await coreHighlightField.setValue(recordId, Array.isArray(data.coreHighlightList) ? data.coreHighlightList.filter((element: any, i: any) => i === data.coreHighlightList.indexOf(element)) : []);
+              }
+              if (coreCopyField && coreCopyVal === null) {
+                await coreCopyField.setValue(recordId, data.coreCopy || '');
               }
             }
             setLogs(prev => [...prev, {
@@ -665,7 +678,7 @@ function LoadApp() {
           />
         </div>
         
-        <div>
+        <div style={{ marginBottom: 16 }}>
           <div style={{ 
             fontSize: '13px', 
             fontWeight: '600', 
@@ -684,6 +697,28 @@ function LoadApp() {
             onClear={() => setSelectCoreHighlightField('')} 
             options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
             placeholder="选择核心突出点字段"
+          />
+        </div>
+        
+        <div>
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: '600', 
+            color: '#2c3e50', 
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            📝 <span style={{ marginLeft: '4px', color: '#e17055' }}>核心文案</span>回写字段
+          </div>
+          <Select 
+            style={{ width: '100%' }} 
+            allowClear 
+            value={selectCoreCopyField} 
+            onSelect={setSelectCoreCopyField} 
+            onClear={() => setSelectCoreCopyField('')} 
+            options={formatFieldTextMetaList(textFieldMetaList)}
+            placeholder="选择核心文案字段"
           />
         </div>
       </div>
