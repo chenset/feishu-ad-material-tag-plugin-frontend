@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import './css/index.css'
 import ReactDOM from 'react-dom/client'
-import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
+import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IAttachmentFieldProperty, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
 import { AlertProps, Button, Select, Modal } from 'antd';
 import { toByteArray, fromByteArray } from 'base64-js';
 
@@ -324,8 +324,85 @@ function LoadApp() {
 
         //调用第三方API
         try {
+          const imageFieldTagList = [];
+          if (elementField) {
+            const elementFieldType = FieldType[await elementField.getType()];
+            const elementFieldMeta = await elementField.getMeta();
+            const elementFieldItem: any = { fieldId: selectElementField, fieldType: elementFieldType, fieldName: elementFieldMeta.name };
+            if (elementFieldType === 'MultiSelect' || elementFieldType === 'SingleSelect') {
+              elementFieldItem.fieldOptions = (elementFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(elementFieldItem);
+          }
+          if (styleField) {
+            const styleFieldType = FieldType[await styleField.getType()];
+            const styleFieldMeta = await styleField.getMeta();
+            const styleFieldItem: any = { fieldId: selectStyleField, fieldType: styleFieldType, fieldName: styleFieldMeta.name };
+            if (styleFieldType === 'MultiSelect' || styleFieldType === 'SingleSelect') {
+              styleFieldItem.fieldOptions = (styleFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(styleFieldItem);
+          }
+          if (themeField) {
+            const themeFieldType = FieldType[await themeField.getType()];
+            const themeFieldMeta = await themeField.getMeta();
+            const themeFieldItem: any = { fieldId: selectThemeField, fieldType: themeFieldType, fieldName: themeFieldMeta.name };
+            if (themeFieldType === 'MultiSelect' || themeFieldType === 'SingleSelect') {
+              themeFieldItem.fieldOptions = (themeFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(themeFieldItem);
+          }
+          if (copywritingField) {
+            const copywritingFieldType = FieldType[await copywritingField.getType()];
+            const copywritingFieldMeta = await copywritingField.getMeta();
+            const copywritingFieldItem: any = { fieldId: selectCopywritingField, fieldType: copywritingFieldType, fieldName: copywritingFieldMeta.name };
+            if (copywritingFieldType === 'MultiSelect' || copywritingFieldType === 'SingleSelect') {
+              copywritingFieldItem.fieldOptions = (copywritingFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(copywritingFieldItem);
+          }
+          if (visualSubjectField) {
+            const visualSubjectFieldType = FieldType[await visualSubjectField.getType()];
+            const visualSubjectFieldMeta = await visualSubjectField.getMeta();
+            const visualSubjectFieldItem: any = { fieldId: selectVisualSubjectField, fieldType: visualSubjectFieldType, fieldName: visualSubjectFieldMeta.name };
+            if (visualSubjectFieldType === 'MultiSelect' || visualSubjectFieldType === 'SingleSelect') {
+              visualSubjectFieldItem.fieldOptions = (visualSubjectFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(visualSubjectFieldItem);
+          }
+          if (presentationTypeField) {
+            const presentationTypeFieldType = FieldType[await presentationTypeField.getType()];
+            const presentationTypeFieldMeta = await presentationTypeField.getMeta();
+            const presentationTypeFieldItem: any = { fieldId: selectPresentationTypeField, fieldType: presentationTypeFieldType, fieldName: presentationTypeFieldMeta.name };
+            if (presentationTypeFieldType === 'MultiSelect' || presentationTypeFieldType === 'SingleSelect') {
+              presentationTypeFieldItem.fieldOptions = (presentationTypeFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(presentationTypeFieldItem);
+          }
+          if (coreHighlightField) {
+            const coreHighlightFieldType = FieldType[await coreHighlightField.getType()];
+            const coreHighlightFieldMeta = await coreHighlightField.getMeta();
+            const coreHighlightFieldItem: any = { fieldId: selectCoreHighlightField, fieldType: coreHighlightFieldType, fieldName: coreHighlightFieldMeta.name };
+            if (coreHighlightFieldType === 'MultiSelect' || coreHighlightFieldType === 'SingleSelect') {
+              coreHighlightFieldItem.fieldOptions = (coreHighlightFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(coreHighlightFieldItem);
+          }
+          if (coreCopyField) {
+            const coreCopyFieldType = FieldType[await coreCopyField.getType()];
+            const coreCopyFieldMeta = await coreCopyField.getMeta();
+            const coreCopyFieldItem: any = { fieldId: selectCoreCopyField, fieldType: coreCopyFieldType, fieldName: coreCopyFieldMeta.name };
+            if (coreCopyFieldType === 'MultiSelect' || coreCopyFieldType === 'SingleSelect') {
+              coreCopyFieldItem.fieldOptions = (coreCopyFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+            }
+            imageFieldTagList.push(coreCopyFieldItem);
+          }
+
           const result = await jsonpRequest(customApiUrl, {
-            files: urls,
+            fileUrl: urls[0],
+            fileName: val[0].name || '',
+            fileType: val[0].type.startsWith('image/') ? 'pic' : val[0].type.startsWith('video/') ? 'vid' : val[0].type,
+            imageFieldTagList: imageFieldTagList,
             recordId: recordId,
             tableId: table.id,
             picPrompt: picPrompt,
@@ -337,30 +414,40 @@ function LoadApp() {
           if(result.resultCode && result.resultCode === 1) {
             // 将响应结果写入复选框
             const data = result.data;
-            if (data) {
-              if (elementField && elementVal === null) {
-                await elementField.setValue(recordId, Array.isArray(data.elementList) ? data.elementList.filter((element: any, i: any) => i === data.elementList.indexOf(element)) : []);
-              }
-              if (styleField && styleVal === null) {
-                await styleField.setValue(recordId, Array.isArray(data.styleList) ? data.styleList.filter((element: any, i: any) => i === data.styleList.indexOf(element)) : []);
-              }
-              if (themeField && themeVal === null) {
-                await themeField.setValue(recordId, Array.isArray(data.themeList) ? data.themeList.filter((element: any, i: any) => i === data.themeList.indexOf(element)) : []);
-              }
-              if (copywritingField && copywritingVal === null) {
-                await copywritingField.setValue(recordId, Array.isArray(data.copyWritingList) ? JSON.stringify(data.copyWritingList) : '');
-              }
-              if (visualSubjectField && visualSubjectVal === null) {
-                await visualSubjectField.setValue(recordId, Array.isArray(data.visualSubjectList) ? data.visualSubjectList.filter((element: any, i: any) => i === data.visualSubjectList.indexOf(element)) : []);
-              }
-              if (presentationTypeField && presentationTypeVal === null) {
-                await presentationTypeField.setValue(recordId, Array.isArray(data.presentationTypeList) ? data.presentationTypeList.filter((element: any, i: any) => i === data.presentationTypeList.indexOf(element)) : []);
-              }
-              if (coreHighlightField && coreHighlightVal === null) {
-                await coreHighlightField.setValue(recordId, Array.isArray(data.coreHighlightList) ? data.coreHighlightList.filter((element: any, i: any) => i === data.coreHighlightList.indexOf(element)) : []);
-              }
-              if (coreCopyField && coreCopyVal === null) {
-                await coreCopyField.setValue(recordId, data.coreCopy || '');
+            if (data && data.fieldTags && Array.isArray(data.fieldTags)) {
+              for (const fieldTag of data.fieldTags) {
+                const { fieldId, fieldType, fieldValues } = fieldTag;
+
+                // 根据字段类型确定设置的值
+                let valueToSet;
+                if (fieldType === 'MultiSelect') {
+                  valueToSet = fieldValues; // 多选框设置整个数组
+                } else if (fieldType === 'SingleSelect') {
+                  valueToSet = fieldValues[0] || ''; // 单选框设置第一个元素
+                } else if (fieldType === 'Text') {
+                  valueToSet = fieldValues[0] || ''; // 文本框设置第一个元素
+                } else {
+                  valueToSet = fieldValues[0] || ''; // 默认设置第一个元素
+                }
+
+                // 根据fieldId找到对应的字段并写入值
+                if (fieldId === selectElementField && elementField && elementVal === null) {
+                  await elementField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectStyleField && styleField && styleVal === null) {
+                  await styleField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectThemeField && themeField && themeVal === null) {
+                  await themeField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectCopywritingField && copywritingField && copywritingVal === null) {
+                  await copywritingField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectVisualSubjectField && visualSubjectField && visualSubjectVal === null) {
+                  await visualSubjectField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectPresentationTypeField && presentationTypeField && presentationTypeVal === null) {
+                  await presentationTypeField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectCoreHighlightField && coreHighlightField && coreHighlightVal === null) {
+                  await coreHighlightField.setValue(recordId, valueToSet);
+                } else if (fieldId === selectCoreCopyField && coreCopyField && coreCopyVal === null) {
+                  await coreCopyField.setValue(recordId, valueToSet);
+                }
               }
             }
             setLogs(prev => [...prev, {
