@@ -384,6 +384,7 @@ function LoadApp() {
             fileUrl: urls[0],
             fileName: val[0].name || '',
             fileType: val[0].type.startsWith('image/') ? 'pic' : val[0].type.startsWith('video/') ? 'vid' : val[0].type,
+            fileSize: val[0].size || 0,
             imageFieldTagList: imageFieldTagList,
             recordId: recordId,
             tableId: table.id,
