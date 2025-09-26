@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, {useEffect, useState} from 'react'
 import './css/index.css'
 import ReactDOM from 'react-dom/client'
-import { bitable, FieldType, IAttachmentField, IAttachmentFieldMeta, IAttachmentFieldProperty, IMultiSelectField, IMultiSelectFieldMeta, ISingleSelectField, ISingleSelectFieldMeta, ITextField, ITextFieldMeta } from '@lark-base-open/js-sdk';
-import { AlertProps, Button, Select, Modal } from 'antd';
-import { toByteArray, fromByteArray } from 'base64-js';
+import {
+  bitable,
+  FieldType,
+  IAttachmentField,
+  IAttachmentFieldMeta,
+  IMultiSelectFieldMeta,
+  ISingleSelectFieldMeta,
+  ITextFieldMeta
+} from '@lark-base-open/js-sdk';
+import {Button, Modal, Select} from 'antd';
+import {fromByteArray} from 'base64-js';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -16,8 +24,9 @@ function LoadApp() {
   const selectDefaultValueKey = 'selectField_v1'
   var cacheSelectVal = JSON.parse(localStorage.getItem(selectDefaultValueKey) || "{}") || {}
 
-  const [info, setInfo] = useState('get table name, please waiting ....');
-  const [alertType, setAlertType] = useState<AlertProps['type']>('info');
+  // 默认字段名配置
+  const defaultFieldNames = ['风格', '题材', '元素', '视觉主体', '呈现型', '核心突出点', '核心文案'];
+
   const [loading, setLoading] = useState(false);
 
   // Add a new state for logs
@@ -29,14 +38,10 @@ function LoadApp() {
   const [textFieldMetaList, setTextMetaList] = useState<ITextFieldMeta[]>([]);
 
   const [selectAttachmentField, setSelectAttachmentField] = useState<string>(cacheSelectVal['attachment'] || '');
-  const [selectElementField, setSelectElementField] = useState<string>(cacheSelectVal['element'] || '');
-  const [selectStyleField, setSelectStyleField] = useState<string>(cacheSelectVal['style'] || '');
-  const [selectThemeField, setSelectThemeField] = useState<string>(cacheSelectVal['theme'] || '');
-  const [selectCopywritingField, setSelectCopywritingField] = useState<string>(cacheSelectVal['copywriting'] || '');
-  const [selectVisualSubjectField, setSelectVisualSubjectField] = useState<string>(cacheSelectVal['visualSubject'] || '');
-  const [selectPresentationTypeField, setSelectPresentationTypeField] = useState<string>(cacheSelectVal['presentationType'] || '');
-  const [selectCoreHighlightField, setSelectCoreHighlightField] = useState<string>(cacheSelectVal['coreHighlight'] || '');
-  const [selectCoreCopyField, setSelectCoreCopyField] = useState<string>(cacheSelectVal['coreCopy'] || '');
+  // 统一的字段配置
+  const [tagFieldConfigs, setTagFieldConfigs] = useState<{fieldId: string, fieldName: string}[]>(
+    cacheSelectVal['tagFields'] || []
+  );
 
   // Add state for keywords
   const [picPrompt, setPicPrompt] = useState<string>(localStorage.getItem('picPrompt') || '');
@@ -92,13 +97,13 @@ function LoadApp() {
   };
 
   // Handle dropdown selection
-  const handlePicPromptSelect = (value: string | null, option: any) => {
+  const handlePicPromptSelect = (value: string | null) => {
     if (value !== null) {
       setPicPrompt(value);
     }
   };
 
-  const handleVidPromptSelect = (value: string | null, option: any) => {
+  const handleVidPromptSelect = (value: string | null) => {
     if (value && value !== '') {
       setVidPrompt(value);
       localStorage.setItem('vidPrompt', value);
@@ -108,9 +113,6 @@ function LoadApp() {
   useEffect(() => {
     const fn = async () => {
       const table = await bitable.base.getActiveTable();
-      const tableName = await table.getName();
-      setInfo(`The table Name is ${tableName}`);
-      setAlertType('success');
       const fieldAttachmenetMetaList = await table.getFieldMetaListByType<IAttachmentFieldMeta>(FieldType.Attachment);
       setAttachmentMetaList(fieldAttachmenetMetaList);
       const fieldMultiSelectMetaList = await table.getFieldMetaListByType<IMultiSelectFieldMeta>(FieldType.MultiSelect);
@@ -124,17 +126,75 @@ function LoadApp() {
     fetchKeywordOptions();
   }, []);
 
+  // 监听字段列表变化，自动匹配默认字段
+  useEffect(() => {
+    // 确保所有字段列表都已加载
+    if (multiSelectFieldMetaList.length > 0 || singleSelectFieldMetaList.length > 0 || textFieldMetaList.length > 0) {
+      autoMatchDefaultFields();
+    }
+  }, [multiSelectFieldMetaList, singleSelectFieldMetaList, textFieldMetaList]);
+
   const formatFieldAttachmentMetaList = (metaList: IAttachmentFieldMeta[]) => {
     return metaList.map(meta => ({ label: meta.name, value: meta.id }));
   };
-  const formatFieldMultiSelectMetaList = (metaList: IMultiSelectFieldMeta[]) => {
-    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+
+  // 格式化所有字段为选项列表
+  const formatAllFieldMetaList = () => {
+    return [
+      ...multiSelectFieldMetaList.map(meta => ({label: meta.name, value: meta.id, type: 'MultiSelect'})),
+      ...singleSelectFieldMetaList.map(meta => ({label: meta.name, value: meta.id, type: 'SingleSelect'})),
+      ...textFieldMetaList.map(meta => ({label: meta.name, value: meta.id, type: 'Text'}))
+    ];
   };
-  const formatFieldSingleSelectMetaList = (metaList: ISingleSelectFieldMeta[]) => {
-    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+
+  // 添加字段配置
+  const addTagFieldConfig = () => {
+    setTagFieldConfigs([...tagFieldConfigs, { fieldId: '', fieldName: '' }]);
   };
-  const formatFieldTextMetaList = (metaList: ITextFieldMeta[]) => {
-    return metaList.map(meta => ({ label: meta.name, value: meta.id }));
+
+  // 删除字段配置
+  const removeTagFieldConfig = (index: number) => {
+    const newConfigs = tagFieldConfigs.filter((_, i) => i !== index);
+    setTagFieldConfigs(newConfigs);
+  };
+
+  // 更新字段配置
+  const updateTagFieldConfig = (index: number, fieldId: string) => {
+    const allFields = formatAllFieldMetaList();
+    const selectedField = allFields.find(field => field.value === fieldId);
+    const newConfigs = [...tagFieldConfigs];
+    newConfigs[index] = {
+      fieldId: fieldId,
+      fieldName: selectedField ? selectedField.label : ''
+    };
+    setTagFieldConfigs(newConfigs);
+  };
+
+  // 自动匹配默认字段
+  const autoMatchDefaultFields = () => {
+    // 如果已经有缓存的配置，就不自动匹配了
+    if (cacheSelectVal['tagFields'] && cacheSelectVal['tagFields'].length > 0) {
+      return;
+    }
+
+    const allFields = formatAllFieldMetaList();
+    const matchedConfigs: {fieldId: string, fieldName: string}[] = [];
+
+    // 遍历默认字段名，在可用字段中查找匹配
+    defaultFieldNames.forEach(defaultName => {
+      const matchedField = allFields.find(field => field.label === defaultName);
+      if (matchedField) {
+        matchedConfigs.push({
+          fieldId: matchedField.value,
+          fieldName: matchedField.label
+        });
+      }
+    });
+
+    // 只有找到匹配字段时才设置
+    if (matchedConfigs.length > 0) {
+      setTagFieldConfigs(matchedConfigs);
+    }
   };
 
   const submit = async () => {
@@ -143,35 +203,48 @@ function LoadApp() {
 
     // update selected value cache
     cacheSelectVal['attachment'] = selectAttachmentField
-    cacheSelectVal['element'] = selectElementField
-    cacheSelectVal['style'] = selectStyleField
-    cacheSelectVal['theme'] = selectThemeField
-    cacheSelectVal['copywriting'] = selectCopywritingField
-    cacheSelectVal['visualSubject'] = selectVisualSubjectField
-    cacheSelectVal['presentationType'] = selectPresentationTypeField
-    cacheSelectVal['coreHighlight'] = selectCoreHighlightField
-    cacheSelectVal['coreCopy'] = selectCoreCopyField
+    cacheSelectVal['tagFields'] = tagFieldConfigs
     localStorage.setItem(selectDefaultValueKey, JSON.stringify(cacheSelectVal))
 
     if (!selectAttachmentField) {
-      Modal.warning({ title: '提示', content: '请选择图片字段', });
+      Modal.warning({ title: '提示', content: '请选择附件字段', });
       return;
     }
-    if (!selectElementField && !selectStyleField && !selectThemeField && !selectCopywritingField && !selectVisualSubjectField && !selectPresentationTypeField && !selectCoreHighlightField && !selectCoreCopyField) {
-      Modal.warning({ title: '提示', content: '元素、风格、题材、文案、视觉主体、呈现型、核心突出点、核心文案至少选择一个', });
+    if (tagFieldConfigs.length === 0) {
+      Modal.warning({ title: '提示', content: '请至少选择一个标签字段', });
       return;
     }
     //选择的字段
     const table = await bitable.base.getActiveTable();
     const attachmentField = await table.getField<IAttachmentField>(selectAttachmentField);
-    const elementField = selectElementField ? await table.getField<IMultiSelectField>(selectElementField) : null;
-    const styleField = selectStyleField ? await table.getField<IMultiSelectField>(selectStyleField) : null;
-    const themeField = selectThemeField ? await table.getField<IMultiSelectField>(selectThemeField) : null;
-    const copywritingField = selectCopywritingField ? await table.getField<ITextField>(selectCopywritingField) : null;
-    const visualSubjectField = selectVisualSubjectField ? await table.getField<IMultiSelectField>(selectVisualSubjectField) : null;
-    const presentationTypeField = selectPresentationTypeField ? await table.getField<IMultiSelectField>(selectPresentationTypeField) : null;
-    const coreHighlightField = selectCoreHighlightField ? await table.getField<IMultiSelectField>(selectCoreHighlightField) : null;
-    const coreCopyField = selectCoreCopyField ? await table.getField<ITextField>(selectCoreCopyField) : null;
+    // 获取所有配置的标签字段
+    const tagFields: Array<{fieldId: string, field: any, fieldName: string}> = [];
+    for (const config of tagFieldConfigs) {
+      if (config.fieldId) {
+        try {
+          const field = await table.getField(config.fieldId);
+          tagFields.push({
+            fieldId: config.fieldId,
+            field: field,
+            fieldName: config.fieldName
+          });
+        } catch (error) {
+          console.error(`获取字段失败: ${config.fieldId}`, error);
+          Modal.warning({
+            title: '提示',
+            content: `字段 "${config.fieldName}" 获取失败，请检查字段配置`,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
+    // 检查是否有有效的字段配置
+    if (tagFields.length === 0) {
+      Modal.warning({ title: '提示', content: '没有有效的标签字段配置', });
+      return;
+    }
     //获取选择的视图
     const selection = await bitable.base.getSelection();
     const activeViewId = selection.viewId;
@@ -197,60 +270,20 @@ function LoadApp() {
         }
         //是否选择的字段已经存在了元素，选择的字段都有值则不会调用api
         let needCallApi = false;
-        //选择字段对应行的值
-        let elementVal = null;
-        if (elementField) {
-          elementVal = await elementField.getValue(recordId);
-          if (elementVal === null) {
-            needCallApi = true;
-          }
-        }
-        let styleVal = null;
-        if (styleField) {
-          styleVal = await styleField.getValue(recordId);
-          if (styleVal === null) {
-            needCallApi = true;
-          }
-        }
-        let themeVal = null;
-        if (themeField) {
-          themeVal = await themeField.getValue(recordId);
-          if (themeVal === null) {
-            needCallApi = true;
-          }
-        }
-        let copywritingVal = null;
-        if (copywritingField) {
-          copywritingVal = await copywritingField.getValue(recordId);
-          if (copywritingVal === null) {
-            needCallApi = true;
-          }
-        }
-        let visualSubjectVal = null;
-        if (visualSubjectField) {
-          visualSubjectVal = await visualSubjectField.getValue(recordId);
-          if (visualSubjectVal === null) {
-            needCallApi = true;
-          }
-        }
-        let presentationTypeVal = null;
-        if (presentationTypeField) {
-          presentationTypeVal = await presentationTypeField.getValue(recordId);
-          if (presentationTypeVal === null) {
-            needCallApi = true;
-          }
-        }
-        let coreHighlightVal = null;
-        if (coreHighlightField) {
-          coreHighlightVal = await coreHighlightField.getValue(recordId);
-          if (coreHighlightVal === null) {
-            needCallApi = true;
-          }
-        }
-        let coreCopyVal = null;
-        if (coreCopyField) {
-          coreCopyVal = await coreCopyField.getValue(recordId);
-          if (coreCopyVal === null) {
+        //存储每个字段的当前值
+        const fieldValues = new Map<string, any>();
+
+        for (const tagField of tagFields) {
+          try {
+            const value = await tagField.field.getValue(recordId);
+            fieldValues.set(tagField.fieldId, value);
+            if (value === null) {
+              needCallApi = true;
+            }
+          } catch (error) {
+            console.error(`获取字段值失败: ${tagField.fieldId}, recordId: ${recordId}`, error);
+            // 如果获取字段值失败，认为字段为空，需要调用API
+            fieldValues.set(tagField.fieldId, null);
             needCallApi = true;
           }
         }
@@ -325,77 +358,26 @@ function LoadApp() {
         //调用第三方API
         try {
           const imageFieldTagList = [];
-          if (elementField) {
-            const elementFieldType = FieldType[await elementField.getType()];
-            const elementFieldMeta = await elementField.getMeta();
-            const elementFieldItem: any = { fieldId: selectElementField, fieldType: elementFieldType, fieldName: elementFieldMeta.name };
-            if (elementFieldType === 'MultiSelect' || elementFieldType === 'SingleSelect') {
-              elementFieldItem.fieldOptions = (elementFieldMeta.property as any).options?.map((option: any) => option.name) || [];
+
+          // 遍历所有配置的标签字段
+          for (const tagField of tagFields) {
+            try {
+              const fieldType = FieldType[await tagField.field.getType()];
+              const fieldMeta = await tagField.field.getMeta();
+              const fieldItem: any = {
+                fieldId: tagField.fieldId,
+                fieldType: fieldType,
+                fieldName: fieldMeta.name
+              };
+
+              if (fieldType === 'MultiSelect' || fieldType === 'SingleSelect') {
+                fieldItem.fieldOptions = (fieldMeta.property as any).options?.map((option: any) => option.name) || [];
+              }
+
+              imageFieldTagList.push(fieldItem);
+            } catch (error) {
+              console.error(`获取字段元数据失败: ${tagField.fieldId}`, error);
             }
-            imageFieldTagList.push(elementFieldItem);
-          }
-          if (styleField) {
-            const styleFieldType = FieldType[await styleField.getType()];
-            const styleFieldMeta = await styleField.getMeta();
-            const styleFieldItem: any = { fieldId: selectStyleField, fieldType: styleFieldType, fieldName: styleFieldMeta.name };
-            if (styleFieldType === 'MultiSelect' || styleFieldType === 'SingleSelect') {
-              styleFieldItem.fieldOptions = (styleFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(styleFieldItem);
-          }
-          if (themeField) {
-            const themeFieldType = FieldType[await themeField.getType()];
-            const themeFieldMeta = await themeField.getMeta();
-            const themeFieldItem: any = { fieldId: selectThemeField, fieldType: themeFieldType, fieldName: themeFieldMeta.name };
-            if (themeFieldType === 'MultiSelect' || themeFieldType === 'SingleSelect') {
-              themeFieldItem.fieldOptions = (themeFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(themeFieldItem);
-          }
-          if (copywritingField) {
-            const copywritingFieldType = FieldType[await copywritingField.getType()];
-            const copywritingFieldMeta = await copywritingField.getMeta();
-            const copywritingFieldItem: any = { fieldId: selectCopywritingField, fieldType: copywritingFieldType, fieldName: copywritingFieldMeta.name };
-            if (copywritingFieldType === 'MultiSelect' || copywritingFieldType === 'SingleSelect') {
-              copywritingFieldItem.fieldOptions = (copywritingFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(copywritingFieldItem);
-          }
-          if (visualSubjectField) {
-            const visualSubjectFieldType = FieldType[await visualSubjectField.getType()];
-            const visualSubjectFieldMeta = await visualSubjectField.getMeta();
-            const visualSubjectFieldItem: any = { fieldId: selectVisualSubjectField, fieldType: visualSubjectFieldType, fieldName: visualSubjectFieldMeta.name };
-            if (visualSubjectFieldType === 'MultiSelect' || visualSubjectFieldType === 'SingleSelect') {
-              visualSubjectFieldItem.fieldOptions = (visualSubjectFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(visualSubjectFieldItem);
-          }
-          if (presentationTypeField) {
-            const presentationTypeFieldType = FieldType[await presentationTypeField.getType()];
-            const presentationTypeFieldMeta = await presentationTypeField.getMeta();
-            const presentationTypeFieldItem: any = { fieldId: selectPresentationTypeField, fieldType: presentationTypeFieldType, fieldName: presentationTypeFieldMeta.name };
-            if (presentationTypeFieldType === 'MultiSelect' || presentationTypeFieldType === 'SingleSelect') {
-              presentationTypeFieldItem.fieldOptions = (presentationTypeFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(presentationTypeFieldItem);
-          }
-          if (coreHighlightField) {
-            const coreHighlightFieldType = FieldType[await coreHighlightField.getType()];
-            const coreHighlightFieldMeta = await coreHighlightField.getMeta();
-            const coreHighlightFieldItem: any = { fieldId: selectCoreHighlightField, fieldType: coreHighlightFieldType, fieldName: coreHighlightFieldMeta.name };
-            if (coreHighlightFieldType === 'MultiSelect' || coreHighlightFieldType === 'SingleSelect') {
-              coreHighlightFieldItem.fieldOptions = (coreHighlightFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(coreHighlightFieldItem);
-          }
-          if (coreCopyField) {
-            const coreCopyFieldType = FieldType[await coreCopyField.getType()];
-            const coreCopyFieldMeta = await coreCopyField.getMeta();
-            const coreCopyFieldItem: any = { fieldId: selectCoreCopyField, fieldType: coreCopyFieldType, fieldName: coreCopyFieldMeta.name };
-            if (coreCopyFieldType === 'MultiSelect' || coreCopyFieldType === 'SingleSelect') {
-              coreCopyFieldItem.fieldOptions = (coreCopyFieldMeta.property as any).options?.map((option: any) => option.name) || [];
-            }
-            imageFieldTagList.push(coreCopyFieldItem);
           }
 
           const result = await jsonpRequest(customApiUrl, {
@@ -416,37 +398,29 @@ function LoadApp() {
             const data = result.data;
             if (data && data.fieldTags && Array.isArray(data.fieldTags)) {
               for (const fieldTag of data.fieldTags) {
-                const { fieldId, fieldType, fieldValues } = fieldTag;
+                const { fieldId, fieldType, fieldValues: apiFieldValues } = fieldTag;
 
                 // 根据字段类型确定设置的值
                 let valueToSet;
                 if (fieldType === 'MultiSelect') {
-                  valueToSet = fieldValues; // 多选框设置整个数组
+                  valueToSet = apiFieldValues; // 多选框设置整个数组
                 } else if (fieldType === 'SingleSelect') {
-                  valueToSet = fieldValues[0] || ''; // 单选框设置第一个元素
+                  valueToSet = apiFieldValues[0] || ''; // 单选框设置第一个元素
                 } else if (fieldType === 'Text') {
-                  valueToSet = fieldValues[0] || ''; // 文本框设置第一个元素
+                  valueToSet = apiFieldValues[0] || ''; // 文本框设置第一个元素
                 } else {
-                  valueToSet = fieldValues[0] || ''; // 默认设置第一个元素
+                  valueToSet = apiFieldValues[0] || ''; // 默认设置第一个元素
                 }
 
                 // 根据fieldId找到对应的字段并写入值
-                if (fieldId === selectElementField && elementField && elementVal === null) {
-                  await elementField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectStyleField && styleField && styleVal === null) {
-                  await styleField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectThemeField && themeField && themeVal === null) {
-                  await themeField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectCopywritingField && copywritingField && copywritingVal === null) {
-                  await copywritingField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectVisualSubjectField && visualSubjectField && visualSubjectVal === null) {
-                  await visualSubjectField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectPresentationTypeField && presentationTypeField && presentationTypeVal === null) {
-                  await presentationTypeField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectCoreHighlightField && coreHighlightField && coreHighlightVal === null) {
-                  await coreHighlightField.setValue(recordId, valueToSet);
-                } else if (fieldId === selectCoreCopyField && coreCopyField && coreCopyVal === null) {
-                  await coreCopyField.setValue(recordId, valueToSet);
+                const targetTagField = tagFields.find(tf => tf.fieldId === fieldId);
+                if (targetTagField && fieldValues.get(fieldId) === null) {
+                  try {
+                    await targetTagField.field.setValue(recordId, valueToSet);
+                  } catch (error) {
+                    console.error(`设置字段值失败: ${fieldId}, recordId: ${recordId}`, error);
+                    // 继续处理下一个字段，不中断整个流程
+                  }
                 }
               }
             }
@@ -534,7 +508,7 @@ function LoadApp() {
           display: 'flex',
           alignItems: 'center'
         }}>
-          📎 请选择图片所在字段
+          📎 请选择附件所在字段
         </div>
         <Select 
           style={{ width: '100%', borderRadius: '8px' }} 
@@ -543,7 +517,7 @@ function LoadApp() {
           onSelect={setSelectAttachmentField} 
           onClear={() => setSelectAttachmentField('')} 
           options={formatFieldAttachmentMetaList(attachmentFieldMetaList)}
-          placeholder="选择图片字段"
+          placeholder="选择附件字段"
         />
       </div>
       <div style={{ marginBottom: 20 }}>
@@ -638,176 +612,99 @@ function LoadApp() {
           onBlur={(e) => e.target.style.borderColor = '#e3f2fd'}
         />
       </div>
-      <div style={{ 
-        background: 'rgba(102, 126, 234, 0.05)', 
-        borderRadius: '12px', 
-        padding: '16px', 
+      <div style={{
+        background: 'rgba(102, 126, 234, 0.05)',
+        borderRadius: '12px',
+        padding: '16px',
         marginBottom: '20px',
         border: '1px solid rgba(102, 126, 234, 0.1)'
       }}>
-        <div style={{ 
-          fontSize: '16px', 
-          fontWeight: '700', 
-          color: '#667eea', 
+        <div style={{
+          fontSize: '16px',
+          fontWeight: '700',
+          color: '#667eea',
           marginBottom: '16px',
-          textAlign: 'center'
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          🏷️ 标签字段配置
+          <span>🏷️ 标签字段配置</span>
+          <Button
+            size="small"
+            type="primary"
+            onClick={addTagFieldConfig}
+            style={{
+              borderRadius: '6px',
+              fontSize: '12px',
+              height: '28px',
+              background: '#667eea'
+            }}
+          >
+            + 添加字段
+          </Button>
         </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
+
+        {tagFieldConfigs.map((config, index) => (
+          <div key={index} style={{
+            marginBottom: index === tagFieldConfigs.length - 1 ? 0 : 16,
+            padding: '12px',
+            background: 'rgba(255, 255, 255, 0.8)',
+            borderRadius: '8px',
+            border: '1px solid rgba(102, 126, 234, 0.15)'
           }}>
-            🧩 <span style={{ marginLeft: '4px', color: '#ff6b6b' }}>元素</span>标签回写字段
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#2c3e50',
+                minWidth: '40px'
+              }}>
+                字段 {index + 1}
+              </div>
+              <Select
+                style={{ flex: 1 }}
+                allowClear
+                value={config.fieldId}
+                onSelect={(value) => updateTagFieldConfig(index, value)}
+                onClear={() => updateTagFieldConfig(index, '')}
+                options={formatAllFieldMetaList()}
+                placeholder="选择标签字段"
+              />
+              <Button
+                size="small"
+                danger
+                onClick={() => removeTagFieldConfig(index)}
+                style={{
+                  minWidth: '28px',
+                  height: '28px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </Button>
+            </div>
           </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectElementField} 
-            onSelect={setSelectElementField} 
-            onClear={() => setSelectElementField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择元素标签字段"
-          />
-        </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
+        ))}
+
+        {tagFieldConfigs.length === 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '20px',
+            color: '#8e9aaf',
+            fontSize: '14px',
+            fontStyle: 'italic'
           }}>
-            🎨 <span style={{ marginLeft: '4px', color: '#4ecdc4' }}>风格</span>标签回写字段
+            请点击上方“添加字段”按钮来配置标签字段
           </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectStyleField} 
-            onSelect={setSelectStyleField} 
-            onClear={() => setSelectStyleField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择风格标签字段"
-          />
-        </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            📖 <span style={{ marginLeft: '4px', color: '#a29bfe' }}>题材</span>标签回写字段
-          </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectThemeField} 
-            onSelect={setSelectThemeField} 
-            onClear={() => setSelectThemeField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择题材标签字段"
-          />
-        </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            👁️ <span style={{ marginLeft: '4px', color: '#fd79a8' }}>视觉主体</span>标签回写字段
-          </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectVisualSubjectField} 
-            onSelect={setSelectVisualSubjectField} 
-            onClear={() => setSelectVisualSubjectField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择视觉主体字段"
-          />
-        </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            🎭 <span style={{ marginLeft: '4px', color: '#74b9ff' }}>呈现型</span>标签回写字段
-          </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectPresentationTypeField} 
-            onSelect={setSelectPresentationTypeField} 
-            onClear={() => setSelectPresentationTypeField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择呈现型字段"
-          />
-        </div>
-        
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            ⭐ <span style={{ marginLeft: '4px', color: '#fdcb6e' }}>核心突出点</span>标签回写字段
-          </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectCoreHighlightField} 
-            onSelect={setSelectCoreHighlightField} 
-            onClear={() => setSelectCoreHighlightField('')} 
-            options={formatFieldMultiSelectMetaList(multiSelectFieldMetaList)}
-            placeholder="选择核心突出点字段"
-          />
-        </div>
-        
-        <div>
-          <div style={{ 
-            fontSize: '13px', 
-            fontWeight: '600', 
-            color: '#2c3e50', 
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            📝 <span style={{ marginLeft: '4px', color: '#e17055' }}>核心文案</span>回写字段
-          </div>
-          <Select 
-            style={{ width: '100%' }} 
-            allowClear 
-            value={selectCoreCopyField} 
-            onSelect={setSelectCoreCopyField} 
-            onClear={() => setSelectCoreCopyField('')} 
-            options={formatFieldTextMetaList(textFieldMetaList)}
-            placeholder="选择核心文案字段"
-          />
-        </div>
+        )}
       </div>
 
       <div style={{ textAlign: 'center', marginTop: 30 }}>
