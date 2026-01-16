@@ -380,17 +380,24 @@ function LoadApp() {
             }
           }
 
-          const result = await jsonpRequest(customApiUrl, {
-            fileUrl: urls[0],
-            fileName: val[0].name || '',
-            fileType: val[0].type.startsWith('image/') ? 'pic' : val[0].type.startsWith('video/') ? 'vid' : val[0].type,
-            fileSize: val[0].size || 0,
-            imageFieldTagList: imageFieldTagList,
-            recordId: recordId,
-            tableId: table.id,
-            picPrompt: picPrompt,
-            vidPrompt: vidPrompt
+          const response = await fetch(customApiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileUrl: urls[0],
+              fileName: val[0].name || '',
+              fileType: val[0].type.startsWith('image/') ? 'pic' : val[0].type.startsWith('video/') ? 'vid' : val[0].type,
+              fileSize: val[0].size || 0,
+              imageFieldTagList: imageFieldTagList,
+              recordId: recordId,
+              tableId: table.id,
+              picPrompt: picPrompt,
+              vidPrompt: vidPrompt
+            })
           });
+          const result = await response.json();
           // 计算耗时
           const duration = (new Date().getTime() - startTime.getTime()) / 1000;
           // 记录处理成功的日志
